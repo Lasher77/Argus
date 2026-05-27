@@ -281,3 +281,239 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Monteur-Ansicht (mobil) --- */
+.monteur {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem 4rem;
+}
+
+.m-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.25rem;
+  font-size: 1rem;
+}
+
+.m-auftrag {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.07);
+}
+
+.m-titel {
+  margin: 0 0 0.25rem;
+  font-size: 1.3rem;
+}
+
+.m-kunde {
+  margin: 0;
+  font-weight: 600;
+}
+
+.m-adresse {
+  display: inline-block;
+  margin: 0.4rem 0;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 1.05rem;
+}
+
+.m-termin,
+.m-beschreibung {
+  margin: 0.3rem 0;
+  color: #555;
+}
+
+/* Große, fingerfreundliche Buttons */
+.gross-button {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 0.9rem;
+  border-radius: 12px;
+}
+
+.gross-button.start {
+  background: #2563eb;
+}
+.gross-button.stopp {
+  background: #d97706;
+}
+.gross-button.erledigt {
+  background: #059669;
+}
+
+.neben-button {
+  min-height: 48px;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  background: #475569;
+  border-radius: 10px;
+}
+
+.m-block {
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #eee;
+}
+
+.m-block-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+
+.timer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timer-uhr {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.manuell {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.manuell input {
+  flex: 1;
+  padding: 0.7rem;
+  font-size: 1.05rem;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+}
+
+.mat-liste {
+  list-style: none;
+  margin: 0 0 0.8rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mat-pos {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mat-bez {
+  flex: 1;
+  min-width: 40%;
+}
+
+.mat-rechts {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mat-menge {
+  width: 60px;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.mat-einheit {
+  color: #666;
+  min-width: 48px;
+  font-size: 0.9rem;
+}
+
+.mat-summe {
+  font-weight: 600;
+  min-width: 70px;
+  text-align: right;
+}
+
+.mat-loeschen {
+  background: #ef4444;
+  min-height: 40px;
+  width: 40px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.mat-hinweis {
+  margin: 0.4rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.katalog-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.katalog-button {
+  background: #eef2ff;
+  color: #1e3a8a;
+  min-height: 48px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 0.95rem;
+}
+
+.katalog-preis {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.frei-eingabe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.frei-eingabe input,
+.frei-eingabe select {
+  padding: 0.6rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+}
+
+.frei-zeile {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.frei-zeile input,
+.frei-zeile select,
+.frei-zeile button {
+  flex: 1;
+}
+
+.m-summe {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  text-align: right;
+}

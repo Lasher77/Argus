@@ -3,6 +3,7 @@ import { getMe, type User } from './api'
 import Login from './Login'
 import Bereich from './Bereich'
 import ChefDashboard from './ChefDashboard'
+import MonteurAnsicht from './MonteurAnsicht'
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -28,6 +29,10 @@ export default function App() {
 
   if (user.rolle === 'chef') {
     return <ChefDashboard user={user} onLogout={() => setUser(null)} />
+  }
+
+  if (user.rolle === 'monteur') {
+    return <MonteurAnsicht user={user} onLogout={() => setUser(null)} />
   }
 
   return <Bereich user={user} onLogout={() => setUser(null)} />

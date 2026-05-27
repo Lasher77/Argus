@@ -21,6 +21,10 @@ services:
       PORT: ${PORT}
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE}
+      FOTO_DIR: /data/fotos
+    volumes:
+      - fotos-data:/data/fotos
     depends_on:
       db:
         condition: service_healthy
@@ -44,3 +48,4 @@ volumes:
   db-data:
   caddy-data:
   caddy-config:
+  fotos-data:

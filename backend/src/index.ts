@@ -4,11 +4,13 @@ import { fileURLToPath } from 'node:url'
 import Fastify from 'fastify'
 import fastifyStatic from '@fastify/static'
 import fastifySecureSession from '@fastify/secure-session'
+import fastifyMultipart from '@fastify/multipart'
 import { runMigrations } from './db/migrate.js'
 import { authRoutes } from './routes/auth.js'
 import { bereichRoutes } from './routes/bereiche.js'
 import { auftragRoutes } from './routes/auftraege.js'
 import { stammdatenRoutes } from './routes/stammdaten.js'
+import { monteurRoutes } from './routes/monteur.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -40,10 +42,16 @@ await app.register(fastifySecureSession, {
   },
 })
 
+// Datei-Uploads (Fotos), Größe begrenzt.
+await app.register(fastifyMultipart, {
+  limits: { fileSize: 15 * 1024 * 1024 },
+})
+
 await app.register(authRoutes)
 await app.register(bereichRoutes)
 await app.register(auftragRoutes)
 await app.register(stammdatenRoutes)
+await app.register(monteurRoutes)
 
 // Einfacher Health-/API-Endpunkt – wird in Etappe 1 vom Frontend abgefragt.
 app.get('/api/health', async () => ({

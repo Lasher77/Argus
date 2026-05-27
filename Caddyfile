@@ -1,0 +1,12 @@
+# Lokale Entwicklung: App über http://localhost erreichbar.
+http://localhost {
+	reverse_proxy app:3000
+}
+
+# Produktion (später aktivieren): Caddy holt und erneuert das TLS-Zertifikat
+# automatisch. Dazu die Zeilen unten einkommentieren, die localhost-Zeilen oben
+# entfernen und die Domain auf den Server zeigen lassen.
+#
+# argus.wits-berlin.org {
+# 	reverse_proxy app:3000
+# }

@@ -89,3 +89,195 @@ button:disabled {
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
 }
+
+/* --- Chef-Dashboard --- */
+.dashboard {
+  max-width: 920px;
+  margin: 2rem auto;
+  padding: 0 1rem 4rem;
+}
+
+.dashboard h1 {
+  margin: 0.5rem 0 1rem;
+}
+
+.kennzahlen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kennzahl {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.kennzahl-wert {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.kennzahl-label {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.aktionsleiste {
+  margin-bottom: 1rem;
+}
+
+.karte-innen {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 1.5rem;
+}
+
+.karte-innen h2 {
+  margin-top: 0;
+}
+
+.formular select,
+.formular textarea {
+  padding: 0.7rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+.kunde-wahl {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.kunde-wahl select {
+  flex: 1;
+}
+
+.neuer-kunde {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.neuer-kunde input {
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.auftrag {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+}
+
+.auftrag-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auftrag-titel {
+  font-weight: 600;
+  margin-left: 0.6rem;
+}
+
+.auftrag-summe {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.auftrag-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  margin-top: 0.6rem;
+  color: #555;
+  font-size: 0.88rem;
+}
+
+.auftrag-aktion {
+  margin-top: 0.8rem;
+}
+
+.zuweisen-formular {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.zuweisen-formular select,
+.zuweisen-formular input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.zuweisen-formular button {
+  min-height: auto;
+  padding: 0.5rem 1rem;
+}
+
+.leer {
+  color: #777;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* --- Status-Badges --- */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  vertical-align: middle;
+}
+
+.badge-neu {
+  background: #6b7280;
+}
+.badge-geplant {
+  background: #2563eb;
+}
+.badge-arbeit {
+  background: #d97706;
+}
+.badge-erledigt {
+  background: #059669;
+}
+.badge-rechnung {
+  background: #7c3aed;
+}
+.badge-bezahlt {
+  background: #15803d;
+}
+
+@media (max-width: 640px) {
+  .kennzahlen {
+    grid-template-columns: 1fr;
+  }
+}

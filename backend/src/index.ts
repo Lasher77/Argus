@@ -7,6 +7,8 @@ import fastifySecureSession from '@fastify/secure-session'
 import { runMigrations } from './db/migrate.js'
 import { authRoutes } from './routes/auth.js'
 import { bereichRoutes } from './routes/bereiche.js'
+import { auftragRoutes } from './routes/auftraege.js'
+import { stammdatenRoutes } from './routes/stammdaten.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -38,6 +40,8 @@ await app.register(fastifySecureSession, {
 
 await app.register(authRoutes)
 await app.register(bereichRoutes)
+await app.register(auftragRoutes)
+await app.register(stammdatenRoutes)
 
 // Einfacher Health-/API-Endpunkt – wird in Etappe 1 vom Frontend abgefragt.
 app.get('/api/health', async () => ({

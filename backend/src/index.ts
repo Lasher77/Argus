@@ -33,8 +33,10 @@ await app.register(fastifySecureSession, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    // Im Produktivbetrieb (hinter Caddy/HTTPS) nur über HTTPS senden.
-    secure: process.env.NODE_ENV === 'production',
+    // Nur über HTTPS senden, wenn ausdrücklich aktiviert. Lokal (http://localhost)
+    // muss das aus bleiben, sonst verwerfen Browser wie Safari das Cookie.
+    // In Produktion hinter Caddy/HTTPS in der .env auf "true" setzen.
+    secure: process.env.SESSION_COOKIE_SECURE === 'true',
   },
 })
 

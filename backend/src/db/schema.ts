@@ -6,6 +6,8 @@ import {
   timestamp,
   numeric,
   date,
+  integer,
+  jsonb,
 } from 'drizzle-orm/pg-core'
 
 // Rollen und Auftrags-Status als feste Aufzählungen (siehe CLAUDE.md).
@@ -95,4 +97,48 @@ export const mwstSaetze = pgTable('mwst_saetze', {
   satz: numeric('satz', { precision: 5, scale: 2 }).notNull(),
   gueltigAb: date('gueltig_ab').notNull(),
   gueltigBis: date('gueltig_bis'),
+})
+
+// Datierte Firmen-Stammdaten: pro feld_name beliebig viele Werte mit
+// Gültigkeitszeitraum. Für eine Rechnung wird der zum Rechnungsdatum gültige
+// Wert herangezogen (gueltig_von <= datum < oder = gueltig_bis bzw. offen).
+export const firmaStammdaten = pgTable('firma_stammdaten', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  feldName: text('feld_name').notNull(),
+  wert: text('wert').notNull(),
+  gueltigVon: date('gueltig_von').notNull(),
+  gueltigBis: date('gueltig_bis'),
+})
+
+// Erstellte Rechnungen. Die zum Zeitpunkt der Erstellung verwendeten Werte
+// (Firma, Kunde, Positionen, Beträge) werden als Snapshot gespeichert, damit
+// sich eine Rechnung nachträglich nicht mehr ändert.
+export const rechnungen = pgTable('rechnungen', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  auftragId: uuid('auftrag_id')
+    .notNull()
+    .references(() => auftraege.id),
+  nummer: text('nummer').notNull().unique(),
+  jahr: integer('jahr').notNull(),
+  laufendeNr: integer('laufende_nr').notNull(),
+  datum: date('datum').notNull(),
+  leistungsdatum: date('leistungsdatum'),
+  firmaSnapshot: jsonb('firma_snapshot').notNull(),
+  kundeSnapshot: jsonb('kunde_snapshot').notNull(),
+  positionen: jsonb('positionen').notNull(),
+  netto: numeric('netto', { precision: 12, scale: 2 }).notNull(),
+  mwstSatz: numeric('mwst_satz', { precision: 5, scale: 2 }).notNull(),
+  mwstBetrag: numeric('mwst_betrag', { precision: 12, scale: 2 }).notNull(),
+  brutto: numeric('brutto', { precision: 12, scale: 2 }).notNull(),
+  pdfPfad: text('pdf_pfad').notNull(),
+  erstelltAm: timestamp('erstellt_am', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
+
+// Lückenloser, jahresweiser Rechnungsnummern-Zähler. Wird beim Erstellen einer
+// Rechnung in einer Transaktion mit Zeilensperre hochgezählt.
+export const rechnungZaehler = pgTable('rechnung_zaehler', {
+  jahr: integer('jahr').primaryKey(),
+  letzteNr: integer('letzte_nr').notNull().default(0),
 })

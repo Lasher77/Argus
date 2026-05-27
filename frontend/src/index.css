@@ -517,3 +517,294 @@ button:disabled {
   font-size: 1.1rem;
   text-align: right;
 }
+
+/* --- Büro-Ansicht --- */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab {
+  background: transparent;
+  color: #555;
+  min-height: auto;
+  padding: 0.6rem 1rem;
+  border-radius: 8px 8px 0 0;
+}
+
+.tab-aktiv {
+  background: #2563eb;
+  color: #fff;
+}
+
+.dashboard h2 {
+  margin: 1.5rem 0 0.8rem;
+  font-size: 1.2rem;
+}
+
+.tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+}
+
+.tabelle th,
+.tabelle td {
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.92rem;
+}
+
+.tabelle th {
+  background: #f8fafc;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.tabelle .rechts {
+  text-align: right;
+}
+
+.link-button {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-right: 0.6rem;
+}
+
+.neben-button.klein {
+  min-height: auto;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.such-leiste {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.such-leiste input {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.hinweis-text {
+  color: #666;
+  font-size: 0.9rem;
+  background: #f1f5f9;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+}
+
+/* Stammdaten */
+.stamm-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.stamm-feld {
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+}
+
+.stamm-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stamm-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.stamm-wert {
+  font-weight: 600;
+}
+
+.stamm-detail {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #eee;
+}
+
+.neuer-wert {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.neuer-wert label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #555;
+  flex: 1;
+}
+
+.neuer-wert input {
+  padding: 0.55rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.neuer-wert button {
+  min-height: 42px;
+}
+
+.historie {
+  margin-top: 0.9rem;
+}
+
+.historie-titel {
+  font-size: 0.8rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.historie-zeile {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  font-size: 0.88rem;
+  border-bottom: 1px dashed #eee;
+}
+
+.historie-zeile.aktuell {
+  font-weight: 600;
+}
+
+.historie-zeit {
+  color: #777;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 3vh 1rem;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 780px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal h2 {
+  margin-top: 0;
+}
+
+.modal-kunde {
+  color: #555;
+}
+
+.modal-feld {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.modal-feld input,
+.modal-feld textarea {
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.pos-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+.pos-tabelle th {
+  font-size: 0.78rem;
+  color: #666;
+  text-align: left;
+  padding: 0.3rem;
+}
+
+.pos-tabelle td {
+  padding: 0.25rem;
+}
+
+.pos-tabelle input {
+  width: 100%;
+  padding: 0.45rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.pos-tabelle input.schmal {
+  width: 80px;
+}
+
+.pos-tabelle .rechts {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.summen {
+  margin: 1rem 0;
+  margin-left: auto;
+  max-width: 320px;
+}
+
+.summen > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+}
+
+.summen-brutto {
+  border-top: 2px solid #333;
+  font-size: 1.2rem;
+  padding-top: 0.5rem !important;
+}
+
+.modal-aktionen {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.erstellen {
+  background: #059669;
+}

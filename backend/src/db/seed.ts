@@ -1,13 +1,24 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import { db, pool } from './index.js'
-import { users, kunden, materialKatalog, mwstSaetze } from './schema.js'
+import {
+  users,
+  kunden,
+  materialKatalog,
+  mwstSaetze,
+  firmaStammdaten,
+} from './schema.js'
 
-// Legt Beispieldaten zum Testen an. Idempotent: läuft nur, wenn die
-// users-Tabelle noch leer ist, damit ein erneuter Aufruf nichts dupliziert.
-async function seed() {
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const LOGO_DIR = process.env.LOGO_DIR ?? '/data/logos'
+
+// Beispiel-Nutzer/Kunden/Material – läuft nur bei leerer users-Tabelle.
+async function seedGrunddaten() {
   const vorhandene = await db.select({ id: users.id }).from(users).limit(1)
   if (vorhandene.length > 0) {
-    console.log('Seed übersprungen – es existieren bereits Nutzer.')
+    console.log('Grunddaten übersprungen – es existieren bereits Nutzer.')
     return
   }
 
@@ -18,43 +29,15 @@ async function seed() {
   ])
 
   await db.insert(users).values([
-    {
-      name: 'Sirke',
-      email: 'sirke@wits-berlin.org',
-      passwortHash: chefHash,
-      rolle: 'chef',
-    },
-    {
-      name: 'Tom',
-      email: 'tom@wits-berlin.org',
-      passwortHash: monteurHash,
-      rolle: 'monteur',
-    },
-    {
-      name: 'Büro',
-      email: 'buero@wits-berlin.org',
-      passwortHash: bueroHash,
-      rolle: 'buero',
-    },
+    { name: 'Sirke', email: 'sirke@wits-berlin.org', passwortHash: chefHash, rolle: 'chef' },
+    { name: 'Tom', email: 'tom@wits-berlin.org', passwortHash: monteurHash, rolle: 'monteur' },
+    { name: 'Büro', email: 'buero@wits-berlin.org', passwortHash: bueroHash, rolle: 'buero' },
   ])
 
   await db.insert(kunden).values([
-    {
-      name: 'Müller GmbH',
-      adresse: 'Hauptstraße 12, 10115 Berlin',
-      telefon: '030 1234567',
-      email: 'kontakt@mueller-gmbh.de',
-    },
-    {
-      name: 'Familie Schmidt',
-      adresse: 'Lindenweg 5, 12203 Berlin',
-      telefon: '030 7654321',
-    },
-    {
-      name: 'Bäckerei Krause',
-      adresse: 'Marktplatz 3, 10178 Berlin',
-      notiz: 'Zugang nur vormittags möglich.',
-    },
+    { name: 'Müller GmbH', adresse: 'Hauptstraße 12, 10115 Berlin', telefon: '030 1234567', email: 'kontakt@mueller-gmbh.de' },
+    { name: 'Familie Schmidt', adresse: 'Lindenweg 5, 12203 Berlin', telefon: '030 7654321' },
+    { name: 'Bäckerei Krause', adresse: 'Marktplatz 3, 10178 Berlin', notiz: 'Zugang nur vormittags möglich.' },
   ])
 
   await db.insert(materialKatalog).values([
@@ -65,17 +48,74 @@ async function seed() {
     { bezeichnung: 'Lötzinn', einzelpreis: '14.00', einheit: 'kg' },
   ])
 
-  // Aktueller MwSt-Satz, offen (kein Enddatum).
   await db.insert(mwstSaetze).values([
     { satz: '19.00', gueltigAb: '2020-01-01', gueltigBis: null },
   ])
 
-  console.log('Seed abgeschlossen:')
-  console.log('  Nutzer:')
+  console.log('Grunddaten angelegt (3 Nutzer, 3 Kunden, 5 Materialien, MwSt 19 %).')
   console.log('    Chef    sirke@wits-berlin.org / Hampel')
   console.log('    Monteur tom@wits-berlin.org   / monteur')
   console.log('    Büro    buero@wits-berlin.org / buero')
-  console.log('  3 Kunden, 5 Material-Katalog-Einträge, MwSt 19 % angelegt.')
+}
+
+// Firmen-Stammdaten – läuft nur, wenn noch keine vorhanden sind. Werte aus der
+// Beispielvorlage; im Büro-Bereich später pflegbar.
+async function seedStammdaten() {
+  const vorhandene = await db
+    .select({ id: firmaStammdaten.id })
+    .from(firmaStammdaten)
+    .limit(1)
+  if (vorhandene.length > 0) {
+    console.log('Stammdaten übersprungen – bereits vorhanden.')
+    return
+  }
+
+  // Logo aus dem Image ins Volume kopieren.
+  fs.mkdirSync(LOGO_DIR, { recursive: true })
+  let logoPfad = ''
+  const quelle = path.join(__dirname, '..', '..', 'assets', 'argus_logo.jpg')
+  if (fs.existsSync(quelle)) {
+    logoPfad = path.join(LOGO_DIR, 'argus_logo.jpg')
+    fs.copyFileSync(quelle, logoPfad)
+  }
+
+  const von = '2020-01-01'
+  const werte: Record<string, string> = {
+    firmenname: 'Argus - Metallbau - S. Schellenberg',
+    firmenadresse: 'Pohlstraße 11 - 10785 Berlin',
+    telefon: '+49 30 36461564',
+    mobil: '+49 172 7094698',
+    telefax: '+49 30 38101150',
+    email: 'argus.schellenberg@gmx.de',
+    steuernummer: '34/508/00371',
+    ust_idnr: '',
+    standard_stundensatz: '60.00',
+    mwst_satz: '19.00',
+    bank_kontoinhaber: 'S. Schellenberg',
+    bank_iban: 'DE00 0000 0000 0000 0000 00',
+    bank_bic: 'BELADEBEXXX',
+    bank_name: 'Berliner Sparkasse',
+    zahlungshinweis:
+      'Bitte überweisen Sie den Betrag innerhalb von 14 Tagen ohne Abzug auf das unten genannte Konto.',
+    logo_pfad: logoPfad,
+  }
+
+  await db.insert(firmaStammdaten).values(
+    Object.entries(werte).map(([feldName, wert]) => ({
+      feldName,
+      wert,
+      gueltigVon: von,
+      gueltigBis: null,
+    })),
+  )
+
+  console.log(`Firmen-Stammdaten angelegt (${Object.keys(werte).length} Felder).`)
+}
+
+async function seed() {
+  await seedGrunddaten()
+  await seedStammdaten()
+  console.log('Seed abgeschlossen.')
 }
 
 seed()

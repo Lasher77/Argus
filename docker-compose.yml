@@ -23,8 +23,12 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE}
       FOTO_DIR: /data/fotos
+      RECHNUNG_DIR: /data/rechnungen
+      LOGO_DIR: /data/logos
     volumes:
       - fotos-data:/data/fotos
+      - rechnungen-data:/data/rechnungen
+      - logos-data:/data/logos
     depends_on:
       db:
         condition: service_healthy
@@ -49,3 +53,5 @@ volumes:
   caddy-data:
   caddy-config:
   fotos-data:
+  rechnungen-data:
+  logos-data:

@@ -54,6 +54,34 @@ Voraussetzung: Docker + Docker Compose.
 
 Stoppen mit `Strg+C`, vollständiges Aufräumen mit `docker compose down`.
 
+## Datenbank & Beispieldaten
+
+Das Schema (Tabellen `users`, `kunden`, `auftraege`, `auftrag_material`,
+`material_katalog`, `fotos`, `mwst_saetze`) wird mit **Drizzle** verwaltet.
+Die Migrationen liegen in `backend/drizzle/` und werden beim App-Start
+**automatisch** angewendet – du musst nichts manuell migrieren.
+
+Beispieldaten zum Testen einspielen (einmalig, idempotent):
+
+```bash
+docker compose exec app node dist/db/seed.js
+```
+
+Damit werden angelegt:
+
+| Rolle   | Login                   | Passwort |
+|---------|-------------------------|----------|
+| Chef    | `sirke@wits-berlin.org` | `Hampel` |
+| Monteur | `tom@wits-berlin.org`   | `monteur`|
+| Büro    | `buero@wits-berlin.org` | `buero`  |
+
+Außerdem drei Beispielkunden, fünf Material-Katalog-Einträge und der
+MwSt-Satz 19 %. Die Test-Passwörter bitte vor dem Produktivbetrieb ändern.
+
+> Schema ändern: Felder in `backend/src/db/schema.ts` anpassen, dann
+> `cd backend && npm run db:generate` ausführen – Drizzle erzeugt eine neue
+> Migrationsdatei, die beim nächsten App-Start automatisch greift.
+
 ## Lokale Entwicklung (ohne Docker, optional)
 
 Für schnelle Iteration mit Hot-Reload lassen sich Backend und Frontend auch

@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react'
+import { getMe, type User } from './api'
+import Login from './Login'
+import Bereich from './Bereich'
 
 export default function App() {
-  const [status, setStatus] = useState<string>('verbinde …')
+  const [user, setUser] = useState<User | null>(null)
+  const [laedt, setLaedt] = useState(true)
 
   useEffect(() => {
-    fetch('/api/health')
-      .then((res) => res.json())
-      .then((data) => setStatus(data.message ?? 'ok'))
-      .catch(() => setStatus('Backend nicht erreichbar'))
+    getMe()
+      .then(setUser)
+      .finally(() => setLaedt(false))
   }, [])
 
-  return (
-    <main className="hallo">
-      <h1>Auftragsbuch</h1>
-      <p>Hallo Welt – das Gerüst steht.</p>
-      <p className="status">
-        Backend-Status: <strong>{status}</strong>
-      </p>
-    </main>
-  )
+  if (laedt) {
+    return (
+      <main className="karte">
+        <p>lädt …</p>
+      </main>
+    )
+  }
+
+  if (!user) {
+    return <Login onLogin={setUser} />
+  }
+
+  return <Bereich user={user} onLogout={() => setUser(null)} />
 }

@@ -1,5 +1,5 @@
 # --- Frontend bauen ---
-FROM node:20-alpine AS frontend
+FROM node:20-slim AS frontend
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm install
@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- Backend bauen ---
-FROM node:20-alpine AS backend
+FROM node:20-slim AS backend
 WORKDIR /backend
 COPY backend/package*.json ./
 RUN npm install
@@ -15,7 +15,7 @@ COPY backend/ ./
 RUN npm run build
 
 # --- Laufzeit (ein einziger App-Container) ---
-FROM node:20-alpine AS runtime
+FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY backend/package*.json ./

@@ -41,12 +41,34 @@ services:
     ports:
       - '80:80'
       - '443:443'
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-http://localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
       - app
+
+  # Taegliches PostgreSQL-Backup als gzipped SQL-Dump in ./backups.
+  # Aufbewahrung und Intervall sind ueber Umgebungsvariablen einstellbar.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+    volumes:
+      - ./backup/backup.sh:/usr/local/bin/backup.sh:ro
+      - ./backups:/backups
+    entrypoint: ['/bin/sh', '/usr/local/bin/backup.sh']
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   db-data:

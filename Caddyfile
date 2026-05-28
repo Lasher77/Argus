@@ -1,12 +1,14 @@
-# Lokale Entwicklung: App über http://localhost erreichbar.
-http://localhost {
+# Site-Adresse aus Umgebungsvariable APP_DOMAIN.
+# - Lokal (Default): "http://localhost" -> http auf Port 80, kein TLS.
+# - Produktion:      z. B. "argus.wits-berlin.org" -> Caddy holt automatisch
+#                    ein TLS-Zertifikat von Let's Encrypt und erneuert es.
+#
+# Hinweis: Für Let's-Encrypt-Benachrichtigungen kann hier zusätzlich
+#   {
+#     email du@beispiel.de
+#   }
+# als globaler Block eingetragen werden (s. README).
+{$APP_DOMAIN:http://localhost} {
+	encode gzip
 	reverse_proxy app:3000
 }
-
-# Produktion (später aktivieren): Caddy holt und erneuert das TLS-Zertifikat
-# automatisch. Dazu die Zeilen unten einkommentieren, die localhost-Zeilen oben
-# entfernen und die Domain auf den Server zeigen lassen.
-#
-# argus.wits-berlin.org {
-# 	reverse_proxy app:3000
-# }

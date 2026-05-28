@@ -2,9 +2,9 @@ import { useState } from 'react'
 import {
   starteArbeit,
   auftragErledigt,
-  type MonteurAuftrag,
+  type ArbeitsAuftrag,
   type KatalogItem,
-} from '../monteurApi'
+} from '../arbeitApi'
 import { formatDatum, formatEuro } from '../format'
 import StundenErfassung from './StundenErfassung'
 import MaterialErfassung from './MaterialErfassung'
@@ -20,7 +20,7 @@ export default function AuftragKarte({
   onAenderung,
   onFehler,
 }: {
-  auftrag: MonteurAuftrag
+  auftrag: ArbeitsAuftrag
   katalog: KatalogItem[]
   onAenderung: () => void
   onFehler: (f: string | null) => void

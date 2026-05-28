@@ -6,7 +6,7 @@ export interface MaterialPos {
   einheit: string
 }
 
-export interface MonteurAuftrag {
+export interface ArbeitsAuftrag {
   id: string
   titel: string
   beschreibung: string | null
@@ -51,16 +51,16 @@ async function senden<T>(
 }
 
 export const ladeMeineAuftraege = () =>
-  holen<MonteurAuftrag[]>('/api/monteur/auftraege')
-export const ladeKatalog = () => holen<KatalogItem[]>('/api/monteur/katalog')
+  holen<ArbeitsAuftrag[]>('/api/arbeit/auftraege')
+export const ladeKatalog = () => holen<KatalogItem[]>('/api/arbeit/katalog')
 
 export const starteArbeit = (id: string) =>
-  senden<{ ok: true }>(`/api/monteur/auftraege/${id}/start`, 'PATCH')
+  senden<{ ok: true }>(`/api/arbeit/auftraege/${id}/start`, 'PATCH')
 export const auftragErledigt = (id: string) =>
-  senden<{ ok: true }>(`/api/monteur/auftraege/${id}/erledigt`, 'PATCH')
+  senden<{ ok: true }>(`/api/arbeit/auftraege/${id}/erledigt`, 'PATCH')
 
 export const addStunden = (id: string, zusatz: number) =>
-  senden<{ stunden: number }>(`/api/monteur/auftraege/${id}/stunden`, 'POST', {
+  senden<{ stunden: number }>(`/api/arbeit/auftraege/${id}/stunden`, 'POST', {
     zusatz,
   })
 
@@ -69,18 +69,18 @@ export const addMaterial = (
   daten:
     | { katalogId: string; menge: number }
     | { bezeichnung: string; einzelpreis: number; einheit: string; menge: number },
-) => senden<{ id: string }>(`/api/monteur/auftraege/${id}/material`, 'POST', daten)
+) => senden<{ id: string }>(`/api/arbeit/auftraege/${id}/material`, 'POST', daten)
 
 export const setMenge = (matId: string, menge: number) =>
-  senden<{ ok: true }>(`/api/monteur/material/${matId}`, 'PATCH', { menge })
+  senden<{ ok: true }>(`/api/arbeit/material/${matId}`, 'PATCH', { menge })
 
 export const removeMaterial = (matId: string) =>
-  senden<{ ok: true }>(`/api/monteur/material/${matId}`, 'DELETE')
+  senden<{ ok: true }>(`/api/arbeit/material/${matId}`, 'DELETE')
 
 export async function uploadFoto(id: string, datei: File): Promise<void> {
   const form = new FormData()
   form.append('foto', datei)
-  const res = await fetch(`/api/monteur/auftraege/${id}/foto`, {
+  const res = await fetch(`/api/arbeit/auftraege/${id}/foto`, {
     method: 'POST',
     body: form,
   })

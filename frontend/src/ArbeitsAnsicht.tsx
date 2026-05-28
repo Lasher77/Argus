@@ -3,19 +3,21 @@ import { logout, type User } from './api'
 import {
   ladeMeineAuftraege,
   ladeKatalog,
-  type MonteurAuftrag,
+  type ArbeitsAuftrag,
   type KatalogItem,
-} from './monteurApi'
-import AuftragKarte from './monteur/AuftragKarte'
+} from './arbeitApi'
+import AuftragKarte from './arbeit/AuftragKarte'
 
-export default function MonteurAnsicht({
+export default function ArbeitsAnsicht({
   user,
   onLogout,
+  eingebettet = false,
 }: {
   user: User
   onLogout: () => void
+  eingebettet?: boolean
 }) {
-  const [auftraege, setAuftraege] = useState<MonteurAuftrag[]>([])
+  const [auftraege, setAuftraege] = useState<ArbeitsAuftrag[]>([])
   const [katalog, setKatalog] = useState<KatalogItem[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
 
@@ -40,14 +42,16 @@ export default function MonteurAnsicht({
 
   return (
     <div className="monteur">
-      <header className="m-kopf">
-        <span>
-          Hallo <strong>{user.name}</strong>
-        </span>
-        <button type="button" onClick={abmelden} className="abmelden">
-          Abmelden
-        </button>
-      </header>
+      {!eingebettet && (
+        <header className="m-kopf">
+          <span>
+            Hallo <strong>{user.name}</strong>
+          </span>
+          <button type="button" onClick={abmelden} className="abmelden">
+            Abmelden
+          </button>
+        </header>
+      )}
 
       {fehler && <p className="fehler">{fehler}</p>}
 

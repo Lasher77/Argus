@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addStunden, type MonteurAuftrag } from '../monteurApi'
+import { addStunden, type ArbeitsAuftrag } from '../arbeitApi'
 import { formatStunden } from '../format'
 
 function formatUhr(sekunden: number): string {
@@ -15,7 +15,7 @@ export default function StundenErfassung({
   onAenderung,
   onFehler,
 }: {
-  auftrag: MonteurAuftrag
+  auftrag: ArbeitsAuftrag
   onAenderung: () => void
   onFehler: (f: string | null) => void
 }) {

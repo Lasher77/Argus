@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { kunden, users } from '../db/schema.js'
 import { requireRole } from '../auth.js'
@@ -52,15 +52,16 @@ export async function stammdatenRoutes(app: FastifyInstance) {
     },
   )
 
-  // Monteure für die Zuweisung (nur Chef).
+  // Zuweisbare Personen für einen Auftrag: Monteure UND der Chef
+  // (der Chef arbeitet laut Rollenmodell auch selbst, siehe CLAUDE.md §1).
   app.get(
-    '/api/monteure',
+    '/api/zuweisbare',
     { preHandler: requireRole('chef') },
     async () =>
       db
-        .select({ id: users.id, name: users.name })
+        .select({ id: users.id, name: users.name, rolle: users.rolle })
         .from(users)
-        .where(eq(users.rolle, 'monteur'))
+        .where(inArray(users.rolle, ['chef', 'monteur']))
         .orderBy(asc(users.name)),
   )
 }

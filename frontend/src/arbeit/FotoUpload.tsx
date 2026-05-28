@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react'
-import { uploadFoto, type MonteurAuftrag } from '../monteurApi'
+import { uploadFoto, type ArbeitsAuftrag } from '../arbeitApi'
 
 export default function FotoUpload({
   auftrag,
   onAenderung,
   onFehler,
 }: {
-  auftrag: MonteurAuftrag
+  auftrag: ArbeitsAuftrag
   onAenderung: () => void
   onFehler: (f: string | null) => void
 }) {

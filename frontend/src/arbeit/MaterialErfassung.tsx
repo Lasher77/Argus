@@ -3,9 +3,9 @@ import {
   addMaterial,
   setMenge,
   removeMaterial,
-  type MonteurAuftrag,
+  type ArbeitsAuftrag,
   type KatalogItem,
-} from '../monteurApi'
+} from '../arbeitApi'
 import { formatEuro } from '../format'
 
 export default function MaterialErfassung({
@@ -14,7 +14,7 @@ export default function MaterialErfassung({
   onAenderung,
   onFehler,
 }: {
-  auftrag: MonteurAuftrag
+  auftrag: ArbeitsAuftrag
   katalog: KatalogItem[]
   onAenderung: () => void
   onFehler: (f: string | null) => void

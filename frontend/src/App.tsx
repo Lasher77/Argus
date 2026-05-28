@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { getMe, type User } from './api'
 import Login from './Login'
 import Bereich from './Bereich'
-import ChefDashboard from './ChefDashboard'
-import MonteurAnsicht from './MonteurAnsicht'
+import ChefRahmen from './ChefRahmen'
+import ArbeitsAnsicht from './ArbeitsAnsicht'
 import BueroAnsicht from './BueroAnsicht'
 
 export default function App() {
@@ -29,11 +29,11 @@ export default function App() {
   }
 
   if (user.rolle === 'chef') {
-    return <ChefDashboard user={user} onLogout={() => setUser(null)} />
+    return <ChefRahmen user={user} onLogout={() => setUser(null)} />
   }
 
   if (user.rolle === 'monteur') {
-    return <MonteurAnsicht user={user} onLogout={() => setUser(null)} />
+    return <ArbeitsAnsicht user={user} onLogout={() => setUser(null)} />
   }
 
   if (user.rolle === 'buero') {

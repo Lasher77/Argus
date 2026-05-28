@@ -161,13 +161,18 @@ export async function auftragRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: 'Ungültiger Statuswechsel' })
       }
 
-      const [monteur] = await db
+      const [zuweisung] = await db
         .select({ rolle: users.rolle })
         .from(users)
         .where(eq(users.id, body.monteurId))
         .limit(1)
-      if (!monteur || monteur.rolle !== 'monteur') {
-        return reply.code(400).send({ error: 'Kein gültiger Monteur' })
+      if (
+        !zuweisung ||
+        (zuweisung.rolle !== 'monteur' && zuweisung.rolle !== 'chef')
+      ) {
+        return reply
+          .code(400)
+          .send({ error: 'Auftrag kann nur Chef oder Monteur zugewiesen werden' })
       }
 
       await db

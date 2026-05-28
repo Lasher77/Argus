@@ -16,12 +16,44 @@ Die App wird **selbst gehostet auf einem eigenen Server** (Linux). Sie muss von
 unterwegs (Smartphone der Monteure) und vom Büro (Laptop) erreichbar sein.
 
 ### Die drei Nutzer und ihre Rollen
-- **Chef** – sieht alles, legt Aufträge an, weist sie Monteuren zu, behält
-  Gesamtüberblick und Kennzahlen. Arbeitet sowohl mobil als auch am Laptop.
+- **Chef** – sieht alles, legt Aufträge an, weist sie zu, behält Gesamtüberblick
+  und Kennzahlen. Arbeitet sowohl mobil als auch am Laptop. **Der Chef ist
+  gleichzeitig auch Monteur** und arbeitet selbst beim Kunden. Er hat deshalb
+  zwei klar getrennte Bereiche:
+    1. **Dashboard (Geschäftsführung):** Gesamtüberblick über ALLE Aufträge
+       aller Personen, Kennzahlen, Aufträge anlegen und zuweisen.
+    2. **Meine Aufträge (Arbeitsansicht):** Die exakt gleiche mobile
+       Arbeitsansicht wie beim Monteur, angewendet auf die dem Chef SELBST
+       zugewiesenen Aufträge. Hier kann der Chef Arbeit starten, den Timer
+       nutzen, Material erfassen, Fotos hochladen und Aufträge erledigen –
+       genau wie ein Monteur, aber nur für seine eigenen zugewiesenen Aufträge.
 - **Monteur** – sieht nur die ihm zugewiesenen Aufträge, primär am Smartphone.
   Braucht radikal einfache Bedienung: große Buttons, wenige Klicks.
 - **Büro** (Ehefrau des Chefs) – verwaltet Kunden und Rechnungen am Laptop,
   verwandelt erledigte Aufträge in Rechnungen, verfolgt offen/bezahlt.
+
+#### Verbindliche Regeln für Zuweisung und Arbeitsansicht
+- Ein Auftrag kann **jeder Person mit Arbeits-Funktion** zugewiesen werden –
+  sowohl einem Monteur als auch dem Chef (beide sind Einträge in `users`).
+- Die **Arbeitsansicht** zeigt jeder Person nur die IHR SELBST zugewiesenen
+  Aufträge (Status `geplant`/`arbeit`). Das gilt für Chef und Monteur gleich.
+  Der Chef sieht in seiner Arbeitsansicht NICHT die Aufträge des Monteurs –
+  sie bleibt schlank und aufgeräumt.
+- Den Blick auf ALLE Aufträge bekommt der Chef ausschließlich über das
+  Dashboard, nicht über die Arbeitsansicht.
+- Ein Auftrag ist immer **genau EINER Person** zur Abarbeitung zugewiesen
+  (`monteur_id`). Dadurch bleiben Stundenerfassung und Zuordnung eindeutig.
+- Serverseitige Rechteprüfung bleibt streng: Arbeits-Aktionen (Timer, Material,
+  Foto, erledigen) darf eine Person nur an Aufträgen ausführen, die ihr selbst
+  zugewiesen sind. Der Chef bildet hier KEINE Ausnahme – auch er bearbeitet im
+  Arbeitsmodus nur seine eigenen, nicht die des Monteurs.
+- Dashboard-/Verwaltungs-Aktionen (anlegen, zuweisen, Rechnungen) bleiben dem
+  Chef bzw. dem Büro vorbehalten.
+- **Bewusst nicht in dieser Version:** Gemeinsames Arbeiten mehrerer Personen
+  am selben Auftrag (z. B. Chef und Monteur gleichzeitig mit getrennter
+  Stundenerfassung). Falls später benötigt, wird das als eigene Erweiterung
+  modelliert – nicht durch Aufweichen der „ein Auftrag, eine zugewiesene
+  Person"-Regel.
 
 ---
 

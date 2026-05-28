@@ -20,7 +20,7 @@ const FOTO_DIR = process.env.FOTO_DIR ?? '/data/fotos'
 fs.mkdirSync(FOTO_DIR, { recursive: true })
 
 function aktuellerUserId(req: FastifyRequest): string {
-  // requireRole('monteur') stellt sicher, dass ein Nutzer vorhanden ist.
+  // requireRole('chef', 'monteur') stellt sicher, dass ein Nutzer vorhanden ist.
   return req.session.get('user')!.id
 }
 
@@ -47,11 +47,11 @@ async function eigenerAuftrag(
   return a
 }
 
-export async function monteurRoutes(app: FastifyInstance) {
+export async function arbeitRoutes(app: FastifyInstance) {
   // Eigene Aufträge im Status geplant oder arbeit, inkl. Material und Fotoanzahl.
   app.get(
-    '/api/monteur/auftraege',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/auftraege',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req) => {
       const userId = aktuellerUserId(req)
       const rows = await db
@@ -121,8 +121,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Material-Katalog zum Antippen.
   app.get(
-    '/api/monteur/katalog',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/katalog',
+    { preHandler: requireRole('chef', 'monteur') },
     async () =>
       (
         await db
@@ -139,8 +139,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Arbeit starten: geplant -> arbeit.
   app.patch(
-    '/api/monteur/auftraege/:id/start',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/auftraege/:id/start',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req, reply) => {
       const { id } = req.params as { id: string }
       const a = await eigenerAuftrag(req, reply, id)
@@ -155,8 +155,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Auftrag erledigt: arbeit -> erledigt, setzt erledigt_am.
   app.patch(
-    '/api/monteur/auftraege/:id/erledigt',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/auftraege/:id/erledigt',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req, reply) => {
       const { id } = req.params as { id: string }
       const a = await eigenerAuftrag(req, reply, id)
@@ -174,8 +174,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Stunden hinzufügen (Timer-Ergebnis oder manuelle Eingabe). Wird addiert.
   app.post(
-    '/api/monteur/auftraege/:id/stunden',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/auftraege/:id/stunden',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req, reply) => {
       const { id } = req.params as { id: string }
       const { zusatz } = (req.body ?? {}) as { zusatz?: number }
@@ -198,8 +198,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Material hinzufügen: aus Katalog (katalogId) oder frei (bezeichnung/einzelpreis).
   app.post(
-    '/api/monteur/auftraege/:id/material',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/auftraege/:id/material',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req, reply) => {
       const { id } = req.params as { id: string }
       const body = (req.body ?? {}) as {
@@ -284,8 +284,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Menge einer Position anpassen.
   app.patch(
-    '/api/monteur/material/:matId',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/material/:matId',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req, reply) => {
       const { matId } = req.params as { matId: string }
       const { menge } = (req.body ?? {}) as { menge?: number }
@@ -304,8 +304,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Position entfernen.
   app.delete(
-    '/api/monteur/material/:matId',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/material/:matId',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req, reply) => {
       const { matId } = req.params as { matId: string }
       const m = await eigeneMaterialposition(req, reply, matId)
@@ -317,8 +317,8 @@ export async function monteurRoutes(app: FastifyInstance) {
 
   // Foto hochladen (Smartphone-Kamera). Wird im Volume gespeichert.
   app.post(
-    '/api/monteur/auftraege/:id/foto',
-    { preHandler: requireRole('monteur') },
+    '/api/arbeit/auftraege/:id/foto',
+    { preHandler: requireRole('chef', 'monteur') },
     async (req, reply) => {
       const { id } = req.params as { id: string }
       const a = await eigenerAuftrag(req, reply, id)

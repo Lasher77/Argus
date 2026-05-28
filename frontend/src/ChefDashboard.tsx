@@ -3,13 +3,13 @@ import { logout, type User } from './api'
 import {
   ladeAuftraege,
   ladeKunden,
-  ladeMonteure,
+  ladeZuweisbare,
   erstelleAuftrag,
   erstelleKunde,
   weiseAuftragZu,
   type AuftragRow,
   type Kunde,
-  type Monteur,
+  type Zuweisbar,
 } from './chefApi'
 import { formatEuro, formatDatum, formatStunden } from './format'
 import StatusBadge from './StatusBadge'
@@ -17,13 +17,15 @@ import StatusBadge from './StatusBadge'
 export default function ChefDashboard({
   user,
   onLogout,
+  eingebettet = false,
 }: {
   user: User
   onLogout: () => void
+  eingebettet?: boolean
 }) {
   const [auftraege, setAuftraege] = useState<AuftragRow[]>([])
   const [kunden, setKunden] = useState<Kunde[]>([])
-  const [monteure, setMonteure] = useState<Monteur[]>([])
+  const [monteure, setMonteure] = useState<Zuweisbar[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [zeigeFormular, setZeigeFormular] = useState(false)
 
@@ -32,7 +34,7 @@ export default function ChefDashboard({
       const [a, k, m] = await Promise.all([
         ladeAuftraege(),
         ladeKunden(),
-        ladeMonteure(),
+        ladeZuweisbare(),
       ])
       setAuftraege(a)
       setKunden(k)
@@ -75,17 +77,19 @@ export default function ChefDashboard({
   }
 
   return (
-    <div className="dashboard">
-      <header className="kopf">
-        <span>
-          Angemeldet als <strong>{user.name}</strong> (Chef)
-        </span>
-        <button type="button" onClick={abmelden} className="abmelden">
-          Abmelden
-        </button>
-      </header>
+    <div className={eingebettet ? '' : 'dashboard'}>
+      {!eingebettet && (
+        <header className="kopf">
+          <span>
+            Angemeldet als <strong>{user.name}</strong> (Chef)
+          </span>
+          <button type="button" onClick={abmelden} className="abmelden">
+            Abmelden
+          </button>
+        </header>
+      )}
 
-      <h1>Chef-Übersicht</h1>
+      {!eingebettet && <h1>Chef-Übersicht</h1>}
 
       <section className="kennzahlen">
         <div className="kennzahl">
@@ -259,7 +263,7 @@ function AuftragsListe({
   onFehler,
 }: {
   auftraege: AuftragRow[]
-  monteure: Monteur[]
+  monteure: Zuweisbar[]
   onAktualisiert: () => void
   onFehler: (f: string | null) => void
 }) {
@@ -324,7 +328,7 @@ function Zuweisen({
   onFehler,
 }: {
   auftrag: AuftragRow
-  monteure: Monteur[]
+  monteure: Zuweisbar[]
   onFertig: () => void
   onFehler: (f: string | null) => void
 }) {
@@ -337,7 +341,7 @@ function Zuweisen({
     onFehler(null)
     setLaedt(true)
     try {
-      if (!monteurId) throw new Error('Bitte einen Monteur wählen')
+      if (!monteurId) throw new Error('Bitte eine Person wählen')
       await weiseAuftragZu(auftrag.id, {
         monteurId,
         termin: termin ? new Date(termin).toISOString() : null,
@@ -353,10 +357,10 @@ function Zuweisen({
   return (
     <form onSubmit={absenden} className="zuweisen-formular">
       <select value={monteurId} onChange={(e) => setMonteurId(e.target.value)}>
-        <option value="">— Monteur wählen —</option>
+        <option value="">— Person wählen —</option>
         {monteure.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.name}
+            {m.name} ({m.rolle === 'chef' ? 'Chef' : 'Monteur'})
           </option>
         ))}
       </select>

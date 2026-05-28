@@ -26,9 +26,10 @@ export interface Kunde {
   email: string | null
 }
 
-export interface Monteur {
+export interface Zuweisbar {
   id: string
   name: string
+  rolle: 'chef' | 'monteur'
 }
 
 async function holen<T>(url: string): Promise<T> {
@@ -56,7 +57,7 @@ async function senden<T>(
 
 export const ladeAuftraege = () => holen<AuftragRow[]>('/api/auftraege')
 export const ladeKunden = () => holen<Kunde[]>('/api/kunden')
-export const ladeMonteure = () => holen<Monteur[]>('/api/monteure')
+export const ladeZuweisbare = () => holen<Zuweisbar[]>('/api/zuweisbare')
 
 export const erstelleKunde = (daten: {
   name: string

@@ -20,6 +20,11 @@ export const STAMMDATEN_FELDER = [
   'bank_name',
   'zahlungshinweis',
   'logo_pfad',
+  // E-Mail-Versand (halbautomatisch via mailto:, siehe CLAUDE.md §4 Büro).
+  'mail_betreff_vorlage',
+  'mail_text_vorlage',
+  'mail_hinweis_text',
+  'mail_hinweis_aktiv',
 ] as const
 
 export type StammdatenFeld = (typeof STAMMDATEN_FELDER)[number]

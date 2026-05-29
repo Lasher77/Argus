@@ -24,6 +24,26 @@ const LABELS: Record<string, string> = {
   bank_name: 'Bank',
   zahlungshinweis: 'Zahlungshinweis',
   logo_pfad: 'Logo',
+  mail_betreff_vorlage: 'E-Mail-Betreff (Vorlage)',
+  mail_text_vorlage: 'E-Mail-Text (Vorlage)',
+  mail_hinweis_text: 'Hinweis nach „Per E-Mail"',
+  mail_hinweis_aktiv: 'Hinweis anzeigen (true/false)',
+}
+
+const MEHRZEILER = new Set(['mail_text_vorlage', 'zahlungshinweis'])
+
+// Beispielrechnung für die Live-Vorschau der Mail-Vorlagen.
+const BEISPIEL = {
+  rechnungsnummer: '2026-0042',
+  kundenname: 'Müller GmbH',
+  betrag: '1.234,56 €',
+  firmenname: 'Argus - Metallbau - S. Schellenberg',
+}
+
+function ersetzePlatzhalter(text: string): string {
+  return text.replace(/\{(\w+)\}/g, (_m, key) =>
+    key in BEISPIEL ? (BEISPIEL as Record<string, string>)[key] : `{${key}}`,
+  )
 }
 
 function heuteIso() {
@@ -93,6 +113,17 @@ export default function Einstellungen() {
                     />
                   )}
 
+                  {(f.feldName === 'mail_betreff_vorlage' ||
+                    f.feldName === 'mail_text_vorlage') &&
+                    aktuell?.wert && (
+                      <div className="vorlagen-vorschau">
+                        <span className="historie-titel">
+                          Vorschau (Beispielrechnung)
+                        </span>
+                        <pre>{ersetzePlatzhalter(aktuell.wert)}</pre>
+                      </div>
+                    )}
+
                   <div className="historie">
                     <span className="historie-titel">Verlauf</span>
                     {f.eintraege.map((e) => (
@@ -143,11 +174,16 @@ function NeuerWert({
     }
   }
 
+  const mehrzeilig = MEHRZEILER.has(feldName)
   return (
     <div className="neuer-wert">
-      <label>
+      <label style={mehrzeilig ? { flexBasis: '100%' } : undefined}>
         Neuer Wert
-        <input value={wert} onChange={(e) => setWert(e.target.value)} />
+        {mehrzeilig ? (
+          <textarea rows={5} value={wert} onChange={(e) => setWert(e.target.value)} />
+        ) : (
+          <input value={wert} onChange={(e) => setWert(e.target.value)} />
+        )}
       </label>
       <label>
         Gültig ab

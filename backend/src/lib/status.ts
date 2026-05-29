@@ -1,13 +1,14 @@
 // Fester Auftrags-Lebenszyklus (siehe CLAUDE.md). Reihenfolge ist bewusst
 // eindimensional: Wechsel sind nur eine Stufe vorwärts oder zurück erlaubt,
 // kein freies Springen.
+// Lebenszyklus eines Auftrags. Rechnung/Bezahlung sind eigene Objekte in
+// der Tabelle `rechnungen` und nicht mehr Status des Auftrags.
 export const STATUS_REIHENFOLGE = [
   'neu',
   'geplant',
   'arbeit',
   'erledigt',
-  'rechnung',
-  'bezahlt',
+  'berechnet',
 ] as const
 
 export type Status = (typeof STATUS_REIHENFOLGE)[number]

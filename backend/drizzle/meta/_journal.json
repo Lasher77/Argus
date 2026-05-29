@@ -15,6 +15,13 @@
       "when": 1779908693254,
       "tag": "0001_clammy_winter_soldier",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780043801189,
+      "tag": "0002_sticky_jamie_braddock",
+      "breakpoints": true
     }
   ]
 }

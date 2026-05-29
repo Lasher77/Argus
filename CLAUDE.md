@@ -63,26 +63,31 @@ Jeder Auftrag durchläuft feste Status. Der Statuswechsel ist das Herzstück der
 so fließt die Information automatisch vom Monteur (unterwegs) ins Büro.
 
 ```
-neu  →  geplant  →  arbeit  →  erledigt  →  rechnung  →  bezahlt
+neu  →  geplant  →  arbeit  →  erledigt  →  berechnet
 ```
 
-| Status     | Bedeutung                          | Wer löst den Wechsel aus |
-|------------|------------------------------------|--------------------------|
-| `neu`      | Angelegt, noch nicht eingeplant    | Chef / Büro              |
-| `geplant`  | Einem Monteur + Termin zugewiesen  | Chef                     |
-| `arbeit`   | Monteur arbeitet vor Ort           | Monteur                  |
-| `erledigt` | Arbeit fertig, Daten erfasst       | Monteur                  |
-| `rechnung` | Rechnung erstellt                  | Büro                     |
-| `bezahlt`  | Zahlung eingegangen                | Büro                     |
+| Status      | Bedeutung                                    | Wer löst den Wechsel aus |
+|-------------|----------------------------------------------|--------------------------|
+| `neu`       | Angelegt, noch nicht eingeplant              | Chef / Büro              |
+| `geplant`   | Einer Person + Termin zugewiesen             | Chef                     |
+| `arbeit`    | Person arbeitet vor Ort                      | Monteur / Chef           |
+| `erledigt`  | Arbeit fertig, Daten erfasst                 | Monteur / Chef           |
+| `berechnet` | Rechnung zum Auftrag erstellt                | Büro (automatisch)       |
 
 Statuswechsel dürfen nur vorwärts erfolgen (eine Stufe zurück ist erlaubt, um
 Fehler zu korrigieren, aber kein freies Springen).
+
+**Rechnung und Bezahlung sind eigene Objekte** (Tabelle `rechnungen`, siehe
+§3) – nicht mehr Status des Auftrags. Ein Auftrag bekommt durch das Erstellen
+einer Rechnung den Status `berechnet`; offen vs. bezahlt ist Status der
+Rechnung, nicht des Auftrags. Freie Rechnungen ohne Auftrag (siehe §4 Büro)
+existieren nur in `rechnungen`.
 
 ---
 
 ## 3. Datenmodell
 
-Vier Tabellen. Bewusst einfach gehalten.
+Bewusst einfach gehalten.
 
 ### users
 | Feld         | Typ        | Hinweis                                  |
@@ -110,7 +115,7 @@ Vier Tabellen. Bewusst einfach gehalten.
 | kunde_id       | UUID, FK   | → kunden.id                                   |
 | titel          | text       | kurze Bezeichnung, z. B. "Heizung warten"     |
 | beschreibung   | text       | optional, Details                             |
-| status         | text       | siehe Lebenszyklus                            |
+| status         | text       | `neu`/`geplant`/`arbeit`/`erledigt`/`berechnet` |
 | monteur_id     | UUID, FK   | → users.id, nullable (bis zugewiesen)         |
 | termin         | timestamp  | nullable, geplanter Termin                    |
 | stundensatz    | numeric    | €/h, Standardwert aus Einstellung übernehmen  |
@@ -142,11 +147,48 @@ Vier Tabellen. Bewusst einfach gehalten.
 | pfad        | text     | Speicherort auf dem Server (Dateisystem)       |
 | hochgeladen_am | timestamp |                                             |
 
-> Hinweis: Rechnungen werden NICHT als separate Tabelle modelliert. Eine "Rechnung"
-> ist ein Auftrag im Status `rechnung`/`bezahlt`. Die Rechnung wird als PDF aus den
-> Auftragsdaten generiert (Stunden × Stundensatz + Materialpositionen). Das hält
-> das Modell einfach. (Rechtssichere/GoBD-konforme Archivierung ist NICHT Teil
-> dieser Version – der Steuerberater übernimmt das. Siehe Abschnitt 7.)
+### rechnungen
+Eigenes Objekt; kann mit Auftrag verknüpft sein (auftragsbasierte Rechnung)
+**oder** ohne Auftrag existieren (freie Rechnung, siehe §4 Büro).
+
+| Feld           | Typ        | Hinweis                                        |
+|----------------|------------|------------------------------------------------|
+| id             | UUID, PK   |                                                |
+| auftrag_id     | UUID, FK   | → auftraege.id, **nullable** (freie Rechnung) |
+| kunde_id       | UUID, FK   | → kunden.id                                    |
+| nummer         | text       | fortlaufend pro Jahr, z. B. `2026-0001`        |
+| jahr           | int        | für Nummernkreis                               |
+| laufende_nr    | int        | jahresweiser Zähler                            |
+| datum          | date       | Rechnungsdatum                                 |
+| leistungsdatum | date       | nullable                                       |
+| status         | text       | `offen` \| `bezahlt`                            |
+| bezahlt_am     | timestamp  | nullable                                       |
+| objekt         | text       | nullable                                       |
+| beschreibung   | text       | nullable                                       |
+| firma_snapshot | jsonb      | Stammdaten zum Erstellungszeitpunkt            |
+| kunde_snapshot | jsonb      | Kundenname/-adresse zum Erstellungszeitpunkt   |
+| positionen     | jsonb      | erstellte Positionen mit Betrag                |
+| netto          | numeric    |                                                |
+| mwst_satz      | numeric    |                                                |
+| mwst_betrag    | numeric    |                                                |
+| brutto         | numeric    |                                                |
+| pdf_pfad       | text       | gespeicherte PDF im Volume `/data/rechnungen`  |
+| erstellt_am    | timestamp  |                                                |
+
+Eine bereits erstellte Rechnung ist unveränderlich (Snapshot-Felder).
+Nachträgliche Änderungen an Kunden- oder Firmen-Stammdaten wirken nicht
+zurück. Korrekturen erfolgen über Storno + Neuausstellung (nicht Teil
+dieser Version – siehe §7).
+
+### firma_stammdaten (datiert)
+Datierte Firmen-Stammdaten (z. B. Firmenname, Adresse, Bank, Mail-Vorlagen)
+mit `gueltig_von`/`gueltig_bis`. Für eine Rechnung wird der zum
+Rechnungsdatum gültige Wert herangezogen und als Snapshot mit der Rechnung
+gespeichert.
+
+### rechnung_zaehler
+Transaktionssicherer Jahreszähler (`jahr` PK, `letzte_nr` int) für die
+lückenlose, jahresweise Rechnungsnummer.
 
 ---
 
@@ -174,14 +216,61 @@ Vier Tabellen. Bewusst einfach gehalten.
 - Bedienung: große Touch-Flächen (min. 44px hoch), wenig Text, klare Icons.
 
 ### Büro-Ansicht (Laptop)
-- Kennzahlen: Anzahl "bereit zum Berechnen", Summe offener Rechnungsbeträge.
-- Liste "Erledigt – bereit für Rechnung" (Status `erledigt`): pro Auftrag die
-  errechnete Summe + Button "Rechnung erstellen" → generiert PDF, Status → `rechnung`.
-- Liste "Rechnungen" (Status `rechnung`/`bezahlt`): mit Button "Als bezahlt markieren".
-- Kundenverwaltung: Kunden anlegen, bearbeiten, Liste ansehen.
+- Kennzahlen: Anzahl "bereit zum Berechnen", Summe offener Rechnungsbeträge
+  (zählt aus der Tabelle `rechnungen`, nicht mehr aus Auftragsstatus).
+- Liste "Erledigt – bereit für Rechnung": Aufträge im Status `erledigt`,
+  **die noch keine Rechnung haben**. Button "Rechnung erstellen" generiert
+  PDF und legt einen `rechnungen`-Eintrag mit Verweis auf den Auftrag an;
+  der Auftrag wechselt anschließend in den Status `berechnet`.
+- Button **"Neue Rechnung erstellen"**: zweiter Weg, ohne dass ein Auftrag
+  dahinterstehen muss. Ablauf:
+  1. Kunde aus Liste wählen ODER neu anlegen (E-Mail-Feld klar sichtbar).
+  2. Positionen frei eintragen oder aus dem Material-Katalog antippen.
+     Auch eine Position vom Typ "Arbeitszeit" (Stunden × Stundensatz) ist
+     frei eintragbar.
+  3. Objekt und Beschreibung optional.
+  4. Vorschau und Erstellung wie bei der auftragsbasierten Rechnung;
+     `auftrag_id` bleibt in `rechnungen` leer.
+- Liste "Rechnungen": ALLE Rechnungen aus `rechnungen` (auftragsbasiert und
+  frei), mit Status `offen`/`bezahlt`, filterbar nach Status. Pro Zeile:
+  - **"PDF öffnen"** – PDF inline öffnen.
+  - **"Als bezahlt markieren"** – Status `offen → bezahlt`, setzt `bezahlt_am`.
+  - **"Per E-Mail versenden"** – halbautomatisch, siehe Abschnitt unten.
+- Kundenverwaltung: Kunden anlegen, bearbeiten, suchen. E-Mail-Feld klar
+  sichtbar und schnell pflegbar.
 - Material-Katalog verwalten (Positionen + Standardpreise pflegen).
-- Einstellungen: Standard-Stundensatz, Firmendaten für die Rechnung
-  (Name, Adresse, Steuernummer, Bankverbindung, Logo optional).
+- Einstellungen: Standard-Stundensatz, datierte Firmen-Stammdaten für die
+  Rechnung (Name, Adresse, Steuernummer, Bankverbindung, Logo optional)
+  sowie **E-Mail-Vorlagen** (Betreff, Text, Hinweistext, siehe unten).
+
+#### Rechnung per E-Mail versenden (halbautomatisch)
+Browser können per `mailto:`-Link den Mail-Client öffnen und Empfänger/
+Betreff/Text vorausfüllen – **aber keine Anhänge übergeben**. Das ist eine
+Browser-Einschränkung und wird **nicht umgangen**. Stattdessen halbautomatisch:
+
+- Klick auf "Per E-Mail versenden" macht parallel zwei Dinge:
+  1. PDF der Rechnung herunterladen (regulärer Browser-Download).
+  2. `mailto:`-Link öffnen mit:
+     - **An:** Kunden-E-Mail (falls im Kunden hinterlegt, sonst leer).
+     - **Betreff:** aus Vorlage in den Einstellungen, Standard:
+       `Rechnung {rechnungsnummer}`.
+     - **Text:** aus Vorlage in den Einstellungen, Standard freundlich
+       ("Sehr geehrte Damen und Herren, anbei senden wir Ihnen die
+       Rechnung {rechnungsnummer}. …").
+- Platzhalter in den Vorlagen: `{rechnungsnummer}`, `{kundenname}`,
+  `{betrag}`, `{firmenname}`.
+- Direkt nach dem Klick zeigt die App einen kurzen Hinweis:
+  > Die Rechnung wurde heruntergeladen und der Mail-Client geöffnet. Bitte
+  > zieh die heruntergeladene PDF in die Mail, bevor du sie versendest.
+  Hinweistext ist in den Einstellungen bearbeitbar und kann komplett
+  ausgeblendet werden.
+
+#### E-Mail-Vorlagen (Einstellungen)
+Eigener Bereich in den Einstellungen:
+- **Betreff-Vorlage** mit Platzhaltern.
+- **Text-Vorlage** (mehrzeilig) mit Platzhaltern.
+- **Hinweistext** nach dem Klick auf "Per E-Mail versenden" (oder leer = aus).
+- **Live-Vorschau**: zeigt Betreff und Text befüllt mit einer Beispielrechnung.
 
 ### Rechnungs-PDF
 - Generiere ein sauberes PDF aus den Auftragsdaten: Firmenkopf, Kunde,
@@ -244,6 +333,13 @@ Dinge ausdrücklich NICHT dazu:
 - Angebots-/Kostenvoranschlagswesen.
 - Mehrmandantenfähigkeit (es ist genau EIN Betrieb).
 - Mobile native Apps (die Web-App ist responsive, das genügt).
+- **Direktversand der Rechnungs-Mail per SMTP aus der App heraus.** Der
+  Rechnungsversand ist bewusst halbautomatisch über `mailto:` gelöst –
+  Browser können per `mailto:` keine Anhänge übergeben, das wird nicht
+  umgangen. Direktversand kann später ergänzt werden, wenn die
+  halbautomatische Lösung im Alltag bewertet ist.
+- Storno-/Korrekturrechnungen (Gegenrechnung mit negativen Beträgen,
+  korrigierte Neuausstellung) – möglich als spätere Erweiterung.
 
 Wenn solche Wünsche aufkommen: erst die Basis fertigstellen, dann separat besprechen.
 

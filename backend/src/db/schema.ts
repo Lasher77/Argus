@@ -19,6 +19,13 @@ export const auftragStatusEnum = pgEnum('auftrag_status', [
   'erledigt',
   'rechnung',
   'bezahlt',
+  'berechnet',
+])
+
+// Rechnung ist ein eigenes Objekt mit eigenem Status.
+export const rechnungStatusEnum = pgEnum('rechnung_status', [
+  'offen',
+  'bezahlt',
 ])
 
 export const users = pgTable('users', {
@@ -115,14 +122,20 @@ export const firmaStammdaten = pgTable('firma_stammdaten', {
 // sich eine Rechnung nachträglich nicht mehr ändert.
 export const rechnungen = pgTable('rechnungen', {
   id: uuid('id').primaryKey().defaultRandom(),
-  auftragId: uuid('auftrag_id')
+  // Optional: bei auftragsbasierter Rechnung gesetzt, bei freier Rechnung leer.
+  auftragId: uuid('auftrag_id').references(() => auftraege.id),
+  kundeId: uuid('kunde_id')
     .notNull()
-    .references(() => auftraege.id),
+    .references(() => kunden.id),
   nummer: text('nummer').notNull().unique(),
   jahr: integer('jahr').notNull(),
   laufendeNr: integer('laufende_nr').notNull(),
   datum: date('datum').notNull(),
   leistungsdatum: date('leistungsdatum'),
+  status: rechnungStatusEnum('status').notNull().default('offen'),
+  bezahltAm: timestamp('bezahlt_am', { withTimezone: true }),
+  objekt: text('objekt'),
+  beschreibung: text('beschreibung'),
   firmaSnapshot: jsonb('firma_snapshot').notNull(),
   kundeSnapshot: jsonb('kunde_snapshot').notNull(),
   positionen: jsonb('positionen').notNull(),

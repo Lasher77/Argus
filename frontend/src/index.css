@@ -269,11 +269,77 @@ button:disabled {
 .badge-erledigt {
   background: #059669;
 }
-.badge-rechnung {
+.badge-rechnung,
+.badge-offen {
   background: #7c3aed;
 }
 .badge-bezahlt {
   background: #15803d;
+}
+
+.rechnungen-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.rechnungen-aktionen {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rechnungen-aktionen select {
+  padding: 0.55rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.frei-hinweis {
+  color: #777;
+  font-size: 0.85rem;
+}
+
+.mail-hinweis {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: #fef9c3;
+  border: 1px solid #facc15;
+  color: #713f12;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  margin: 0.8rem 0;
+}
+
+.mail-hinweis button {
+  background: transparent;
+  color: #713f12;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  min-height: auto;
+  padding: 0 0.25rem;
+}
+
+.vorlagen-vorschau {
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #d6e1f0;
+}
+
+.vorlagen-vorschau pre {
+  margin: 0.3rem 0 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #333;
 }
 
 @media (max-width: 640px) {

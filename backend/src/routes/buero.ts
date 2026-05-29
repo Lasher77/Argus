@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { FastifyInstance } from 'fastify'
-import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import {
   auftraege,
@@ -12,7 +12,6 @@ import {
   firmaStammdaten,
 } from '../db/schema.js'
 import { requireRole } from '../auth.js'
-import { istErlaubterStatuswechsel } from '../lib/status.js'
 import { berechneSummen, round2, type Position } from '../lib/geld.js'
 import { holeStammwerte, STAMMDATEN_FELDER } from '../lib/stammdaten.js'
 import { erzeugeRechnungPdf } from '../lib/rechnungPdf.js'
@@ -36,6 +35,13 @@ function vortagIso(iso: string): string {
 function kundennummer(id: string): string {
   const n = parseInt(id.replace(/-/g, '').slice(0, 6), 16) % 100000
   return n.toString().padStart(5, '0')
+}
+
+// Deutsches Währungsformat für Mail-Vorlagen-Platzhalter (z. B. "1.234,56 €").
+function formatBetrag(n: number): string {
+  const [g, c] = Math.abs(n).toFixed(2).split('.')
+  const ganz = g.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `${n < 0 ? '-' : ''}${ganz},${c} €`
 }
 
 // Berechnete Summe eines erledigten Auftrags (Arbeitszeit + Material).
@@ -88,22 +94,24 @@ export async function bueroRoutes(app: FastifyInstance) {
 
   // --- Kennzahlen ---
   app.get('/api/buero/kennzahlen', nurBuero, async () => {
+    // Bereit zum Berechnen: erledigte Aufträge OHNE bereits erzeugte Rechnung.
     const [bereit] = await db
       .select({ anzahl: sql<number>`count(*)::int` })
       .from(auftraege)
-      .where(eq(auftraege.status, 'erledigt'))
+      .leftJoin(rechnungen, eq(rechnungen.auftragId, auftraege.id))
+      .where(and(eq(auftraege.status, 'erledigt'), sql`${rechnungen.id} IS NULL`))
+    // Offene Rechnungsbeträge: Summe brutto aller Rechnungen im Status 'offen'.
     const [offen] = await db
       .select({ summe: sql<string>`coalesce(sum(${rechnungen.brutto}), 0)` })
       .from(rechnungen)
-      .innerJoin(auftraege, eq(rechnungen.auftragId, auftraege.id))
-      .where(eq(auftraege.status, 'rechnung'))
+      .where(eq(rechnungen.status, 'offen'))
     return {
       bereitAnzahl: bereit?.anzahl ?? 0,
       offeneRechnungenSumme: Number(offen?.summe ?? 0),
     }
   })
 
-  // --- Erledigt – bereit für Rechnung ---
+  // --- Erledigt – bereit für Rechnung (nur Aufträge ohne bestehende Rechnung) ---
   app.get('/api/buero/erledigt', nurBuero, async () => {
     const rows = await db
       .select({
@@ -116,7 +124,8 @@ export async function bueroRoutes(app: FastifyInstance) {
       })
       .from(auftraege)
       .leftJoin(kunden, eq(auftraege.kundeId, kunden.id))
-      .where(eq(auftraege.status, 'erledigt'))
+      .leftJoin(rechnungen, eq(rechnungen.auftragId, auftraege.id))
+      .where(and(eq(auftraege.status, 'erledigt'), sql`${rechnungen.id} IS NULL`))
       .orderBy(desc(auftraege.erledigtAm))
 
     return Promise.all(
@@ -195,9 +204,9 @@ export async function bueroRoutes(app: FastifyInstance) {
         id: auftraege.id,
         status: auftraege.status,
         erledigtAm: auftraege.erledigtAm,
+        kundeId: auftraege.kundeId,
         kundeName: kunden.name,
         kundeAdresse: kunden.adresse,
-        kundeId: kunden.id,
       })
       .from(auftraege)
       .leftJoin(kunden, eq(auftraege.kundeId, kunden.id))
@@ -267,11 +276,14 @@ export async function bueroRoutes(app: FastifyInstance) {
           .insert(rechnungen)
           .values({
             auftragId: id,
+            kundeId: a.kundeId,
             nummer,
             jahr,
             laufendeNr,
             datum,
             leistungsdatum,
+            objekt: body.objekt ?? null,
+            beschreibung: body.beschreibung ?? null,
             firmaSnapshot: stamm,
             kundeSnapshot: kunde,
             positionen,
@@ -283,7 +295,8 @@ export async function bueroRoutes(app: FastifyInstance) {
           })
           .returning({ id: rechnungen.id, nummer: rechnungen.nummer })
 
-        await tx.update(auftraege).set({ status: 'rechnung' }).where(eq(auftraege.id, id))
+        // Auftrag landet im neuen Endstatus "berechnet" (siehe CLAUDE.md §2).
+        await tx.update(auftraege).set({ status: 'berechnet' }).where(eq(auftraege.id, id))
         return neu
       })
       return reply.code(201).send(ergebnis)
@@ -293,28 +306,36 @@ export async function bueroRoutes(app: FastifyInstance) {
     }
   })
 
-  // --- Rechnungen-Liste ---
-  app.get('/api/buero/rechnungen', nurBuero, async () => {
-    const rows = await db
+  // --- Rechnungen-Liste (alle, auftragsbasiert UND frei) ---
+  app.get('/api/buero/rechnungen', nurBuero, async (req) => {
+    const { status } = req.query as { status?: 'offen' | 'bezahlt' }
+    const basis = db
       .select({
         id: rechnungen.id,
         nummer: rechnungen.nummer,
         datum: rechnungen.datum,
         brutto: rechnungen.brutto,
         kundeSnapshot: rechnungen.kundeSnapshot,
-        status: auftraege.status,
+        status: rechnungen.status,
+        kundeEmail: kunden.email,
+        auftragId: rechnungen.auftragId,
       })
       .from(rechnungen)
-      .innerJoin(auftraege, eq(rechnungen.auftragId, auftraege.id))
-      .where(inArray(auftraege.status, ['rechnung', 'bezahlt']))
+      .leftJoin(kunden, eq(rechnungen.kundeId, kunden.id))
       .orderBy(desc(rechnungen.nummer))
+    const rows =
+      status === 'offen' || status === 'bezahlt'
+        ? await basis.where(eq(rechnungen.status, status))
+        : await basis
     return rows.map((r) => ({
       id: r.id,
       nummer: r.nummer,
       datum: r.datum,
       brutto: Number(r.brutto),
       kundeName: (r.kundeSnapshot as { name?: string })?.name ?? '',
+      kundeEmail: r.kundeEmail ?? '',
       status: r.status,
+      auftragId: r.auftragId,
     }))
   })
 
@@ -334,20 +355,171 @@ export async function bueroRoutes(app: FastifyInstance) {
     return reply.send(fs.createReadStream(r.pdfPfad))
   })
 
-  // --- Als bezahlt markieren ---
-  app.patch('/api/buero/auftrag/:id/bezahlt', nurBuero, async (req, reply) => {
+  // --- Rechnung als bezahlt markieren ---
+  app.patch('/api/buero/rechnung/:id/bezahlt', nurBuero, async (req, reply) => {
     const { id } = req.params as { id: string }
-    const [a] = await db
-      .select({ status: auftraege.status })
-      .from(auftraege)
-      .where(eq(auftraege.id, id))
+    const [r] = await db
+      .select({ status: rechnungen.status })
+      .from(rechnungen)
+      .where(eq(rechnungen.id, id))
       .limit(1)
-    if (!a) return reply.code(404).send({ error: 'Auftrag nicht gefunden' })
-    if (a.status !== 'rechnung' || !istErlaubterStatuswechsel('rechnung', 'bezahlt')) {
-      return reply.code(400).send({ error: 'Nur eine offene Rechnung kann als bezahlt markiert werden' })
+    if (!r) return reply.code(404).send({ error: 'Rechnung nicht gefunden' })
+    if (r.status !== 'offen') {
+      return reply.code(400).send({ error: 'Rechnung ist nicht offen' })
     }
-    await db.update(auftraege).set({ status: 'bezahlt' }).where(eq(auftraege.id, id))
+    await db
+      .update(rechnungen)
+      .set({ status: 'bezahlt', bezahltAm: new Date() })
+      .where(eq(rechnungen.id, id))
     return { ok: true }
+  })
+
+  // --- Freie Rechnung erstellen (ohne Auftrag) ---
+  app.post('/api/buero/rechnung', nurBuero, async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      kundeId?: string
+      objekt?: string
+      beschreibung?: string
+      leistungsdatum?: string | null
+      positionen?: Array<{ bezeichnung: string; menge: number; einheit: string; einzelpreis: number }>
+    }
+    if (!body.kundeId) {
+      return reply.code(400).send({ error: 'Kunde ist erforderlich' })
+    }
+    if (!body.positionen || body.positionen.length === 0) {
+      return reply.code(400).send({ error: 'Mindestens eine Position erforderlich' })
+    }
+
+    const [k] = await db
+      .select({ id: kunden.id, name: kunden.name, adresse: kunden.adresse })
+      .from(kunden)
+      .where(eq(kunden.id, body.kundeId))
+      .limit(1)
+    if (!k) return reply.code(400).send({ error: 'Kunde nicht gefunden' })
+
+    const datum = heuteIso()
+    const jahr = Number(datum.slice(0, 4))
+    const stamm = await holeStammwerte(datum)
+    const mwstSatz = Number(stamm.mwst_satz ?? '19')
+
+    const positionen: Position[] = body.positionen.map((p, i) => {
+      const menge = Number(p.menge)
+      const einzelpreis = Number(p.einzelpreis)
+      return {
+        pos: i + 1,
+        bezeichnung: String(p.bezeichnung).trim(),
+        menge,
+        einheit: String(p.einheit || 'Stück'),
+        einzelpreis,
+        betrag: round2(menge * einzelpreis),
+      }
+    })
+    const summen = berechneSummen(positionen, mwstSatz)
+
+    const kunde = {
+      name: k.name,
+      adresse: k.adresse,
+      nummer: kundennummer(k.id),
+    }
+
+    try {
+      const ergebnis = await db.transaction(async (tx) => {
+        const res = await tx.execute(sql`
+          INSERT INTO rechnung_zaehler (jahr, letzte_nr) VALUES (${jahr}, 1)
+          ON CONFLICT (jahr) DO UPDATE SET letzte_nr = rechnung_zaehler.letzte_nr + 1
+          RETURNING letzte_nr
+        `)
+        const laufendeNr = Number((res.rows[0] as { letzte_nr: number }).letzte_nr)
+        const nummer = `${jahr}-${laufendeNr.toString().padStart(4, '0')}`
+        const pdfPfad = path.join(RECHNUNG_DIR, `${nummer}.pdf`)
+
+        await erzeugeRechnungPdf(
+          {
+            nummer,
+            datum,
+            leistungsdatum: body.leistungsdatum ?? null,
+            firma: stamm,
+            kunde,
+            objekt: body.objekt ?? null,
+            beschreibung: body.beschreibung ?? null,
+            positionen,
+            summen,
+          },
+          pdfPfad,
+        )
+
+        const [neu] = await tx
+          .insert(rechnungen)
+          .values({
+            auftragId: null,
+            kundeId: k.id,
+            nummer,
+            jahr,
+            laufendeNr,
+            datum,
+            leistungsdatum: body.leistungsdatum ?? null,
+            objekt: body.objekt ?? null,
+            beschreibung: body.beschreibung ?? null,
+            firmaSnapshot: stamm,
+            kundeSnapshot: kunde,
+            positionen,
+            netto: summen.netto.toFixed(2),
+            mwstSatz: summen.mwstSatz.toFixed(2),
+            mwstBetrag: summen.mwstBetrag.toFixed(2),
+            brutto: summen.brutto.toFixed(2),
+            pdfPfad,
+          })
+          .returning({ id: rechnungen.id, nummer: rechnungen.nummer })
+        return neu
+      })
+      return reply.code(201).send(ergebnis)
+    } catch (err) {
+      app.log.error(err)
+      return reply.code(500).send({ error: 'Rechnung konnte nicht erstellt werden' })
+    }
+  })
+
+  // --- Mail-Daten für eine Rechnung (Empfänger, Betreff, Text aus Vorlagen) ---
+  app.get('/api/buero/rechnung/:id/mail', nurBuero, async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const [r] = await db
+      .select({
+        id: rechnungen.id,
+        nummer: rechnungen.nummer,
+        brutto: rechnungen.brutto,
+        kundeSnapshot: rechnungen.kundeSnapshot,
+        firmaSnapshot: rechnungen.firmaSnapshot,
+        kundeEmail: kunden.email,
+      })
+      .from(rechnungen)
+      .leftJoin(kunden, eq(rechnungen.kundeId, kunden.id))
+      .where(eq(rechnungen.id, id))
+      .limit(1)
+    if (!r) return reply.code(404).send({ error: 'Rechnung nicht gefunden' })
+
+    const stamm = await holeStammwerte(heuteIso())
+    const platzhalter = {
+      rechnungsnummer: r.nummer,
+      kundenname: (r.kundeSnapshot as { name?: string })?.name ?? '',
+      betrag: formatBetrag(Number(r.brutto)),
+      firmenname:
+        stamm.firmenname ??
+        (r.firmaSnapshot as { firmenname?: string })?.firmenname ??
+        '',
+    }
+    const fuelle = (text: string) =>
+      text.replace(/\{(\w+)\}/g, (_m, key) =>
+        key in platzhalter ? String((platzhalter as Record<string, string>)[key]) : `{${key}}`,
+      )
+
+    return {
+      empfaenger: r.kundeEmail ?? '',
+      betreff: fuelle(stamm.mail_betreff_vorlage ?? 'Rechnung {rechnungsnummer}'),
+      text: fuelle(stamm.mail_text_vorlage ?? ''),
+      hinweisText: stamm.mail_hinweis_text ?? '',
+      hinweisAktiv: (stamm.mail_hinweis_aktiv ?? 'true') === 'true',
+      pdfUrl: `/api/buero/rechnung/${r.id}/pdf`,
+    }
   })
 
   // --- Kundenverwaltung ---

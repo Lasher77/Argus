@@ -45,7 +45,18 @@ export interface RechnungRow {
   datum: string
   brutto: number
   kundeName: string
-  status: 'rechnung' | 'bezahlt'
+  kundeEmail: string
+  status: 'offen' | 'bezahlt'
+  auftragId: string | null
+}
+
+export interface MailDaten {
+  empfaenger: string
+  betreff: string
+  text: string
+  hinweisText: string
+  hinweisAktiv: boolean
+  pdfUrl: string
 }
 
 export interface Kunde {
@@ -112,9 +123,21 @@ export const erstelleRechnung = (
     beschreibung?: string
   },
 ) => senden<{ id: string; nummer: string }>(`/api/buero/auftrag/${id}/rechnung`, 'POST', daten)
-export const ladeRechnungen = () => holen<RechnungRow[]>('/api/buero/rechnungen')
-export const markiereBezahlt = (id: string) =>
-  senden<{ ok: true }>(`/api/buero/auftrag/${id}/bezahlt`, 'PATCH')
+export const ladeRechnungen = (status?: 'offen' | 'bezahlt') =>
+  holen<RechnungRow[]>(
+    `/api/buero/rechnungen${status ? `?status=${status}` : ''}`,
+  )
+export const erstelleFreieRechnung = (daten: {
+  kundeId: string
+  positionen: Array<{ bezeichnung: string; menge: number; einheit: string; einzelpreis: number }>
+  objekt?: string
+  beschreibung?: string
+  leistungsdatum?: string | null
+}) => senden<{ id: string; nummer: string }>('/api/buero/rechnung', 'POST', daten)
+export const markiereBezahlt = (rechnungId: string) =>
+  senden<{ ok: true }>(`/api/buero/rechnung/${rechnungId}/bezahlt`, 'PATCH')
+export const ladeMailDaten = (rechnungId: string) =>
+  holen<MailDaten>(`/api/buero/rechnung/${rechnungId}/mail`)
 export const pdfUrl = (id: string) => `/api/buero/rechnung/${id}/pdf`
 
 export const ladeKunden = (q = '') =>

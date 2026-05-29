@@ -98,6 +98,12 @@ async function seedStammdaten() {
     zahlungshinweis:
       'Bitte überweisen Sie den Betrag innerhalb von 14 Tagen ohne Abzug auf das unten genannte Konto.',
     logo_pfad: logoPfad,
+    mail_betreff_vorlage: 'Rechnung {rechnungsnummer}',
+    mail_text_vorlage:
+      'Sehr geehrte Damen und Herren,\n\nanbei senden wir Ihnen die Rechnung {rechnungsnummer} über {betrag}.\n\nMit freundlichen Grüßen\n{firmenname}',
+    mail_hinweis_text:
+      'Die Rechnung wurde heruntergeladen und der Mail-Client geöffnet. Bitte zieh die heruntergeladene PDF in die Mail, bevor du sie versendest.',
+    mail_hinweis_aktiv: 'true',
   }
 
   await db.insert(firmaStammdaten).values(
@@ -112,9 +118,38 @@ async function seedStammdaten() {
   console.log(`Firmen-Stammdaten angelegt (${Object.keys(werte).length} Felder).`)
 }
 
+// Falls Stammdaten schon vorhanden sind, aber einzelne (z. B. neu eingeführte
+// Mail-Vorlagen-Felder) noch fehlen: gezielt nachziehen.
+async function seedFehlendeStammdaten() {
+  const vorhandene = await db
+    .select({ feldName: firmaStammdaten.feldName })
+    .from(firmaStammdaten)
+  const bekannt = new Set(vorhandene.map((v) => v.feldName))
+  const nachzieher: Record<string, string> = {
+    mail_betreff_vorlage: 'Rechnung {rechnungsnummer}',
+    mail_text_vorlage:
+      'Sehr geehrte Damen und Herren,\n\nanbei senden wir Ihnen die Rechnung {rechnungsnummer} über {betrag}.\n\nMit freundlichen Grüßen\n{firmenname}',
+    mail_hinweis_text:
+      'Die Rechnung wurde heruntergeladen und der Mail-Client geöffnet. Bitte zieh die heruntergeladene PDF in die Mail, bevor du sie versendest.',
+    mail_hinweis_aktiv: 'true',
+  }
+  const fehlt = Object.entries(nachzieher).filter(([k]) => !bekannt.has(k))
+  if (fehlt.length === 0) return
+  await db.insert(firmaStammdaten).values(
+    fehlt.map(([feldName, wert]) => ({
+      feldName,
+      wert,
+      gueltigVon: '2020-01-01',
+      gueltigBis: null,
+    })),
+  )
+  console.log(`Stammdaten nachgezogen: ${fehlt.map(([k]) => k).join(', ')}`)
+}
+
 async function seed() {
   await seedGrunddaten()
   await seedStammdaten()
+  await seedFehlendeStammdaten()
   console.log('Seed abgeschlossen.')
 }
 

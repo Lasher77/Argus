@@ -4,6 +4,7 @@ import {
   ladeErledigt,
   ladeRechnungen,
   markiereBezahlt,
+  ladeMailDaten,
   pdfUrl,
   type Kennzahlen,
   type ErledigtRow,
@@ -11,20 +12,26 @@ import {
 } from '../bueroApi'
 import { formatEuro, formatDatum } from '../format'
 import VorschauModal from './VorschauModal'
+import FreieRechnungModal from './FreieRechnungModal'
+
+type StatusFilter = 'alle' | 'offen' | 'bezahlt'
 
 export default function Uebersicht() {
   const [kennzahlen, setKennzahlen] = useState<Kennzahlen | null>(null)
   const [erledigt, setErledigt] = useState<ErledigtRow[]>([])
   const [rechnungen, setRechnungen] = useState<RechnungRow[]>([])
+  const [filter, setFilter] = useState<StatusFilter>('alle')
   const [fehler, setFehler] = useState<string | null>(null)
   const [vorschauId, setVorschauId] = useState<string | null>(null)
+  const [freieRechnung, setFreieRechnung] = useState(false)
+  const [mailHinweis, setMailHinweis] = useState<string | null>(null)
 
   async function neuLaden() {
     try {
       const [k, e, r] = await Promise.all([
         ladeKennzahlen(),
         ladeErledigt(),
-        ladeRechnungen(),
+        ladeRechnungen(filter === 'alle' ? undefined : filter),
       ])
       setKennzahlen(k)
       setErledigt(e)
@@ -36,15 +43,39 @@ export default function Uebersicht() {
 
   useEffect(() => {
     neuLaden()
-  }, [])
+  }, [filter])
 
-  async function bezahlt(id: string) {
+  async function bezahlt(rechnungId: string) {
     setFehler(null)
     try {
-      await markiereBezahlt(id)
+      await markiereBezahlt(rechnungId)
       neuLaden()
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'Aktion fehlgeschlagen')
+    }
+  }
+
+  async function perMailVersenden(rechnungId: string) {
+    setFehler(null)
+    try {
+      const mail = await ladeMailDaten(rechnungId)
+      // Parallel: PDF herunterladen + Mail-Client öffnen.
+      const pdfHref = `${mail.pdfUrl}?download=1`
+      const a = document.createElement('a')
+      a.href = pdfHref
+      a.download = ''
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+
+      const mailto = `mailto:${encodeURIComponent(mail.empfaenger)}?subject=${encodeURIComponent(mail.betreff)}&body=${encodeURIComponent(mail.text)}`
+      window.location.href = mailto
+
+      if (mail.hinweisAktiv && mail.hinweisText) {
+        setMailHinweis(mail.hinweisText)
+      }
+    } catch (err) {
+      setFehler(err instanceof Error ? err.message : 'Mail-Versand fehlgeschlagen')
     }
   }
 
@@ -64,6 +95,14 @@ export default function Uebersicht() {
       </section>
 
       {fehler && <p className="fehler">{fehler}</p>}
+      {mailHinweis && (
+        <div className="mail-hinweis">
+          <span>{mailHinweis}</span>
+          <button type="button" onClick={() => setMailHinweis(null)}>
+            ✕
+          </button>
+        </div>
+      )}
 
       <h2>Erledigt – bereit für Rechnung</h2>
       {erledigt.length === 0 ? (
@@ -90,7 +129,23 @@ export default function Uebersicht() {
         </div>
       )}
 
-      <h2>Rechnungen</h2>
+      <div className="rechnungen-kopf">
+        <h2>Rechnungen</h2>
+        <div className="rechnungen-aktionen">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as StatusFilter)}
+          >
+            <option value="alle">Alle</option>
+            <option value="offen">Nur offene</option>
+            <option value="bezahlt">Nur bezahlte</option>
+          </select>
+          <button type="button" onClick={() => setFreieRechnung(true)}>
+            Neue Rechnung erstellen
+          </button>
+        </div>
+      </div>
+
       {rechnungen.length === 0 ? (
         <p className="leer">Noch keine Rechnungen.</p>
       ) : (
@@ -110,7 +165,10 @@ export default function Uebersicht() {
               <tr key={r.id}>
                 <td>{r.nummer}</td>
                 <td>{formatDatum(r.datum)}</td>
-                <td>{r.kundeName}</td>
+                <td>
+                  {r.kundeName}
+                  {!r.auftragId && <span className="frei-hinweis"> (frei)</span>}
+                </td>
                 <td className="rechts">{formatEuro(r.brutto)}</td>
                 <td>
                   <span className={`badge badge-${r.status}`}>
@@ -126,7 +184,15 @@ export default function Uebersicht() {
                   >
                     PDF öffnen
                   </a>
-                  {r.status === 'rechnung' && (
+                  <button
+                    type="button"
+                    className="neben-button klein"
+                    onClick={() => perMailVersenden(r.id)}
+                    title={r.kundeEmail || 'Empfängerfeld leer'}
+                  >
+                    Per E-Mail
+                  </button>
+                  {r.status === 'offen' && (
                     <button
                       type="button"
                       className="neben-button klein"
@@ -148,6 +214,17 @@ export default function Uebersicht() {
           onAbbrechen={() => setVorschauId(null)}
           onErstellt={() => {
             setVorschauId(null)
+            neuLaden()
+          }}
+          onFehler={setFehler}
+        />
+      )}
+
+      {freieRechnung && (
+        <FreieRechnungModal
+          onAbbrechen={() => setFreieRechnung(false)}
+          onErstellt={() => {
+            setFreieRechnung(false)
             neuLaden()
           }}
           onFehler={setFehler}

@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { logout, type User } from './api'
 import Uebersicht from './buero/Uebersicht'
-import Kunden from './buero/Kunden'
+import ObjektePflege from './objekte/ObjektePflege'
 import Katalog from './buero/Katalog'
 import Einstellungen from './buero/Einstellungen'
 
-type Tab = 'uebersicht' | 'kunden' | 'katalog' | 'einstellungen'
+type Tab = 'uebersicht' | 'objekte' | 'katalog' | 'einstellungen'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' },
-  { id: 'kunden', label: 'Kunden' },
+  { id: 'objekte', label: 'Objekte' },
   { id: 'katalog', label: 'Material-Katalog' },
   { id: 'einstellungen', label: 'Einstellungen' },
 ]
@@ -55,7 +55,7 @@ export default function BueroAnsicht({
       </nav>
 
       {tab === 'uebersicht' && <Uebersicht />}
-      {tab === 'kunden' && <Kunden />}
+      {tab === 'objekte' && <ObjektePflege />}
       {tab === 'katalog' && <Katalog />}
       {tab === 'einstellungen' && <Einstellungen />}
     </div>

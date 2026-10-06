@@ -1,3 +1,5 @@
+import type { AdressBlock, Herkunft, Kandidat } from './objekteApi'
+
 export interface Kennzahlen {
   bereitAnzahl: number
   offeneRechnungenSumme: number
@@ -6,7 +8,7 @@ export interface Kennzahlen {
 export interface ErledigtRow {
   id: string
   titel: string
-  kundeName: string | null
+  ortLabel: string
   erledigtAm: string | null
   summe: number
 }
@@ -33,10 +35,16 @@ export interface Vorschau {
   objekt: string | null
   beschreibung: string | null
   leistungsdatum: string | null
-  kunde: { name: string | null; adresse: string | null; nummer: string }
   mwstSatz: number
   positionen: Position[]
   summen: Summen
+  kandidaten: Kandidat[]
+  standardKey: Herkunft | null
+}
+
+// Rechnungsempfänger, wie er mit der Rechnung gespeichert wird.
+export interface EmpfaengerEingabe extends AdressBlock {
+  herkunft: Herkunft | 'frei'
 }
 
 export interface RechnungRow {
@@ -44,8 +52,8 @@ export interface RechnungRow {
   nummer: string
   datum: string
   brutto: number
-  kundeName: string
-  kundeEmail: string
+  empfaengerName: string
+  empfaengerEmail: string
   status: 'offen' | 'bezahlt'
   auftragId: string | null
 }
@@ -57,15 +65,6 @@ export interface MailDaten {
   hinweisText: string
   hinweisAktiv: boolean
   pdfUrl: string
-}
-
-export interface Kunde {
-  id: string
-  name: string
-  adresse: string | null
-  telefon: string | null
-  email: string | null
-  notiz: string | null
 }
 
 export interface KatalogItem {
@@ -121,6 +120,7 @@ export const erstelleRechnung = (
     positionen: Array<{ bezeichnung: string; menge: number; einheit: string; einzelpreis: number }>
     objekt?: string
     beschreibung?: string
+    empfaenger: EmpfaengerEingabe
   },
 ) => senden<{ id: string; nummer: string }>(`/api/buero/auftrag/${id}/rechnung`, 'POST', daten)
 export const ladeRechnungen = (status?: 'offen' | 'bezahlt') =>
@@ -128,7 +128,9 @@ export const ladeRechnungen = (status?: 'offen' | 'bezahlt') =>
     `/api/buero/rechnungen${status ? `?status=${status}` : ''}`,
   )
 export const erstelleFreieRechnung = (daten: {
-  kundeId: string
+  objektId?: string | null
+  einheitId?: string | null
+  empfaenger: EmpfaengerEingabe
   positionen: Array<{ bezeichnung: string; menge: number; einheit: string; einzelpreis: number }>
   objekt?: string
   beschreibung?: string
@@ -139,13 +141,6 @@ export const markiereBezahlt = (rechnungId: string) =>
 export const ladeMailDaten = (rechnungId: string) =>
   holen<MailDaten>(`/api/buero/rechnung/${rechnungId}/mail`)
 export const pdfUrl = (id: string) => `/api/buero/rechnung/${id}/pdf`
-
-export const ladeKunden = (q = '') =>
-  holen<Kunde[]>(`/api/buero/kunden${q ? `?q=${encodeURIComponent(q)}` : ''}`)
-export const erstelleKunde = (daten: Partial<Kunde>) =>
-  senden<{ id: string }>('/api/buero/kunden', 'POST', daten)
-export const aktualisiereKunde = (id: string, daten: Partial<Kunde>) =>
-  senden<{ ok: true }>(`/api/buero/kunden/${id}`, 'PATCH', daten)
 
 export const ladeKatalog = () => holen<KatalogItem[]>('/api/buero/katalog')
 export const erstelleKatalog = (daten: { bezeichnung: string; einzelpreis: number; einheit: string }) =>

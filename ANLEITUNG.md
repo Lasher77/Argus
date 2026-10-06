@@ -4,6 +4,10 @@ Diese Anleitung führt dich Schritt für Schritt durch den Bau. Die `CLAUDE.md`
 (im selben Ordner) enthält die vollständige Spezifikation – Claude Code liest sie
 automatisch. Du gibst hier einfach die Schritte der Reihe nach als Prompts ein.
 
+> **Hinweis:** Das Datenmodell wurde nach den ersten Etappen auf Hausverwaltungen,
+> Objekte und Einheiten umgestellt (siehe `CLAUDE.md` §3). „Kunden" in den
+> Etappen-Prompts unten sind der historische Stand.
+
 Die Idee: in kleinen, testbaren Etappen bauen. Nach jeder Etappe läuft die App und
 du kannst etwas ausprobieren, bevor es weitergeht. Das verhindert, dass am Ende ein
 großer, undurchschaubarer Berg Code entsteht.

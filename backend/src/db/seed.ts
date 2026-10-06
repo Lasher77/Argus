@@ -5,7 +5,10 @@ import bcrypt from 'bcryptjs'
 import { db, pool } from './index.js'
 import {
   users,
-  kunden,
+  hausverwaltungen,
+  ansprechpartner,
+  objekte,
+  einheiten,
   materialKatalog,
   mwstSaetze,
   firmaStammdaten,
@@ -34,12 +37,6 @@ async function seedGrunddaten() {
     { name: 'Büro', email: 'buero@wits-berlin.org', passwortHash: bueroHash, rolle: 'buero' },
   ])
 
-  await db.insert(kunden).values([
-    { name: 'Müller GmbH', adresse: 'Hauptstraße 12, 10115 Berlin', telefon: '030 1234567', email: 'kontakt@mueller-gmbh.de' },
-    { name: 'Familie Schmidt', adresse: 'Lindenweg 5, 12203 Berlin', telefon: '030 7654321' },
-    { name: 'Bäckerei Krause', adresse: 'Marktplatz 3, 10178 Berlin', notiz: 'Zugang nur vormittags möglich.' },
-  ])
-
   await db.insert(materialKatalog).values([
     { bezeichnung: 'Kupferrohr 15mm', einzelpreis: '8.50', einheit: 'Meter' },
     { bezeichnung: 'Dichtungsring', einzelpreis: '0.80', einheit: 'Stück' },
@@ -52,7 +49,7 @@ async function seedGrunddaten() {
     { satz: '19.00', gueltigAb: '2020-01-01', gueltigBis: null },
   ])
 
-  console.log('Grunddaten angelegt (3 Nutzer, 3 Kunden, 5 Materialien, MwSt 19 %).')
+  console.log('Grunddaten angelegt (3 Nutzer, 5 Materialien, MwSt 19 %).')
   console.log('    Chef    sirke@wits-berlin.org / Hampel')
   console.log('    Monteur tom@wits-berlin.org   / monteur')
   console.log('    Büro    buero@wits-berlin.org / buero')
@@ -146,10 +143,106 @@ async function seedFehlendeStammdaten() {
   console.log(`Stammdaten nachgezogen: ${fehlt.map(([k]) => k).join(', ')}`)
 }
 
+// Demo-Objekte zum Ausprobieren (Hausverwaltungen mit Ansprechpartnern, Objekte
+// mit Einheiten). Läuft nur, solange noch keine Objekte/Hausverwaltungen existieren.
+async function seedObjekte() {
+  const vorhanden = await db.select({ id: objekte.id }).from(objekte).limit(1)
+  const vorhandenHv = await db.select({ id: hausverwaltungen.id }).from(hausverwaltungen).limit(1)
+  if (vorhanden.length > 0 || vorhandenHv.length > 0) {
+    console.log('Demo-Objekte übersprungen – bereits vorhanden.')
+    return
+  }
+
+  const [hvMeier, hvNord] = await db
+    .insert(hausverwaltungen)
+    .values([
+      {
+        name: 'Hausverwaltung Meier GmbH',
+        rechnungEmpfaenger: 'Hausverwaltung Meier GmbH',
+        rechnungStrasse: 'Marktstraße 1',
+        rechnungOrt: '10115 Berlin',
+        rechnungEmail: 'rechnungen@hv-meier.example',
+        rechnungKundennr: 'L-4711',
+      },
+      {
+        name: 'Nord Immobilien KG',
+        rechnungEmpfaenger: 'Nord Immobilien KG',
+        rechnungStrasse: 'Seestraße 22',
+        rechnungOrt: '13353 Berlin',
+        rechnungEmail: 'buchhaltung@nord-immo.example',
+      },
+    ])
+    .returning()
+
+  const [apSchmidt, apKoch] = await db
+    .insert(ansprechpartner)
+    .values([
+      { name: 'Frau Schmidt', rolle: 'Objektbetreuung', telefon: '030 111111', email: 'schmidt@hv-meier.example', hausverwaltungId: hvMeier.id },
+      { name: 'Herr Koch', rolle: 'Technik', telefon: '030 222222', email: 'koch@hv-meier.example', hausverwaltungId: hvMeier.id },
+    ])
+    .returning()
+  await db.insert(ansprechpartner).values([
+    { name: 'Herr Lehmann', rolle: 'Hausmeister', telefon: '0171 3334445' },
+    { name: 'Frau Berger', rolle: 'Verwaltung', telefon: '030 555555', hausverwaltungId: hvNord.id },
+  ])
+
+  const [pohl, see] = await db
+    .insert(objekte)
+    .values([
+      {
+        name: 'Wohnhaus Pohlstraße 11',
+        strasse: 'Pohlstraße', hausnummer: '11', plz: '10785', ort: 'Berlin',
+        hausverwaltungId: hvMeier.id,
+        ansprechpartnerId: apSchmidt.id,
+        vorOrtName: 'Herr Lehmann (Hausmeister)', vorOrtTelefon: '0171 3334445',
+        rechnungQuelle: 'hausverwaltung',
+      },
+      {
+        name: 'Bürogebäude Seestraße 22',
+        strasse: 'Seestraße', hausnummer: '22', plz: '13353', ort: 'Berlin',
+        hausverwaltungId: hvNord.id,
+        rechnungQuelle: 'eigen',
+        rechnungEmpfaenger: 'Seestraße 22 Verwaltungs-GmbH',
+        rechnungStrasse: 'Seestraße 22',
+        rechnungOrt: '13353 Berlin',
+      },
+      {
+        name: 'Bäckerei Krause (Einfamilienhaus)',
+        strasse: 'Marktplatz', hausnummer: '3', plz: '10178', ort: 'Berlin',
+        rechnungQuelle: 'eigen',
+        rechnungEmpfaenger: 'Bäckerei Krause',
+        rechnungStrasse: 'Marktplatz 3',
+        rechnungOrt: '10178 Berlin',
+        rechnungEmail: 'krause@baeckerei.example',
+      },
+    ])
+    .returning()
+
+  await db.insert(einheiten).values([
+    { objektId: pohl.id, bezeichnung: 'Wohnung 1, 1. OG rechts', vorOrtName: 'Familie Yilmaz (Mieter)', vorOrtTelefon: '0176 1234567', rechnungQuelle: 'objekt' },
+    {
+      objektId: pohl.id, bezeichnung: 'Wohnung 2, 1. OG links',
+      hausverwaltungId: hvNord.id,
+      vorOrtName: 'Frau Weber (Mieterin)', vorOrtTelefon: '0152 7654321',
+      rechnungQuelle: 'hausverwaltung',
+    },
+    {
+      objektId: pohl.id, bezeichnung: 'Gewerbe EG',
+      ansprechpartnerId: apKoch.id,
+      rechnungQuelle: 'eigen',
+      rechnungEmpfaenger: 'Gewerbe EG Betriebs-GmbH', rechnungStrasse: 'Pohlstraße 11', rechnungOrt: '10785 Berlin',
+    },
+    { objektId: see.id, bezeichnung: 'Büro 3. OG', rechnungQuelle: 'objekt' },
+  ])
+
+  console.log('Demo-Objekte angelegt (2 Hausverwaltungen, 4 Ansprechpartner, 3 Objekte, 4 Einheiten).')
+}
+
 async function seed() {
   await seedGrunddaten()
   await seedStammdaten()
   await seedFehlendeStammdaten()
+  await seedObjekte()
   console.log('Seed abgeschlossen.')
 }
 

@@ -50,16 +50,38 @@ export default function AuftragKarte({
   return (
     <section className="m-auftrag">
       <h2 className="m-titel">{auftrag.titel}</h2>
-      <p className="m-kunde">{auftrag.kundeName}</p>
-      {auftrag.kundeAdresse && (
+      <p className="m-kunde">{auftrag.ortLabel}</p>
+      {auftrag.adresse && (
         <a
           className="m-adresse"
-          href={kartenLink(auftrag.kundeAdresse)}
+          href={kartenLink(auftrag.adresse)}
           target="_blank"
           rel="noreferrer"
         >
-          📍 {auftrag.kundeAdresse}
+          📍 {auftrag.adresse}
         </a>
+      )}
+      {auftrag.vorOrt.name || auftrag.vorOrt.telefon ? (
+        <p className="m-kontakt">
+          Vor Ort: <strong>{auftrag.vorOrt.name || '—'}</strong>
+          {auftrag.vorOrt.telefon && (
+            <>
+              {' '}
+              <a href={`tel:${auftrag.vorOrt.telefon}`}>📞 {auftrag.vorOrt.telefon}</a>
+            </>
+          )}
+        </p>
+      ) : null}
+      {auftrag.ansprechpartner && (
+        <p className="m-kontakt">
+          Ansprechpartner: <strong>{auftrag.ansprechpartner.name}</strong>
+          {auftrag.ansprechpartner.telefon && (
+            <>
+              {' '}
+              <a href={`tel:${auftrag.ansprechpartner.telefon}`}>📞 {auftrag.ansprechpartner.telefon}</a>
+            </>
+          )}
+        </p>
       )}
       <p className="m-termin">Termin: {formatDatum(auftrag.termin)}</p>
       {auftrag.beschreibung && (

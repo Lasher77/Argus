@@ -1,7 +1,14 @@
 import type { FastifyInstance } from 'fastify'
 import { eq, desc, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { auftraege, auftragMaterial, fotos, kunden, users } from '../db/schema.js'
+import {
+  auftraege,
+  auftragMaterial,
+  einheiten,
+  fotos,
+  objekte,
+  users,
+} from '../db/schema.js'
 import { requireRole } from '../auth.js'
 import { istErlaubterStatuswechsel } from '../lib/status.js'
 
@@ -26,12 +33,17 @@ export async function auftragRoutes(app: FastifyInstance) {
           stundensatz: auftraege.stundensatz,
           erstelltAm: auftraege.erstelltAm,
           erledigtAm: auftraege.erledigtAm,
-          kundeName: kunden.name,
+          objektId: auftraege.objektId,
+          einheitId: auftraege.einheitId,
+          objektName: objekte.name,
+          einheitName: einheiten.bezeichnung,
+          einsatzort: auftraege.einsatzort,
           monteurId: auftraege.monteurId,
           monteurName: users.name,
         })
         .from(auftraege)
-        .leftJoin(kunden, eq(auftraege.kundeId, kunden.id))
+        .leftJoin(objekte, eq(auftraege.objektId, objekte.id))
+        .leftJoin(einheiten, eq(auftraege.einheitId, einheiten.id))
         .leftJoin(users, eq(auftraege.monteurId, users.id))
         .orderBy(desc(auftraege.erstelltAm))
 
@@ -71,7 +83,13 @@ export async function auftragRoutes(app: FastifyInstance) {
           stundensatz: z.stundensatz === null ? null : stundensatz,
           erstelltAm: z.erstelltAm,
           erledigtAm: z.erledigtAm,
-          kundeName: z.kundeName,
+          objektId: z.objektId,
+          einheitId: z.einheitId,
+          // Anzeigename: "Objekt · Einheit", bei freien Aufträgen "Freier Auftrag".
+          ortLabel: z.objektName
+            ? `${z.objektName}${z.einheitName ? ` · ${z.einheitName}` : ''}`
+            : 'Freier Auftrag',
+          einsatzort: z.einsatzort,
           monteurId: z.monteurId,
           monteurName: z.monteurName,
           materialAnzahl: mat?.anzahl ?? 0,
@@ -88,30 +106,51 @@ export async function auftragRoutes(app: FastifyInstance) {
     { preHandler: requireRole('chef') },
     async (req, reply) => {
       const body = (req.body ?? {}) as {
-        kundeId?: string
+        objektId?: string | null
+        einheitId?: string | null
+        einsatzort?: string | null
         titel?: string
         beschreibung?: string
       }
       const titel = body.titel?.trim()
-      if (!body.kundeId || !titel) {
-        return reply
-          .code(400)
-          .send({ error: 'Kunde und Titel sind erforderlich' })
+      if (!titel) {
+        return reply.code(400).send({ error: 'Titel ist erforderlich' })
       }
 
-      const [kunde] = await db
-        .select({ id: kunden.id })
-        .from(kunden)
-        .where(eq(kunden.id, body.kundeId))
-        .limit(1)
-      if (!kunde) {
-        return reply.code(400).send({ error: 'Kunde nicht gefunden' })
+      // Objektbezug: Einheit bestimmt das Objekt; ohne beides = freier Auftrag.
+      let objektId: string | null = body.objektId || null
+      const einheitId: string | null = body.einheitId || null
+      if (einheitId) {
+        const [e] = await db
+          .select({ objektId: einheiten.objektId, archiviert: einheiten.archiviert })
+          .from(einheiten)
+          .where(eq(einheiten.id, einheitId))
+          .limit(1)
+        if (!e) return reply.code(400).send({ error: 'Einheit nicht gefunden' })
+        if (e.archiviert) return reply.code(400).send({ error: 'Einheit ist archiviert' })
+        if (objektId && objektId !== e.objektId) {
+          return reply.code(400).send({ error: 'Einheit gehört nicht zum gewählten Objekt' })
+        }
+        objektId = e.objektId
       }
+      if (objektId) {
+        const [o] = await db
+          .select({ id: objekte.id, archiviert: objekte.archiviert })
+          .from(objekte)
+          .where(eq(objekte.id, objektId))
+          .limit(1)
+        if (!o) return reply.code(400).send({ error: 'Objekt nicht gefunden' })
+        if (o.archiviert) return reply.code(400).send({ error: 'Objekt ist archiviert' })
+      }
+      const frei = !objektId
 
       const [neu] = await db
         .insert(auftraege)
         .values({
-          kundeId: body.kundeId,
+          objektId,
+          einheitId,
+          // Einsatzort-Freitext gibt es nur bei freien Aufträgen.
+          einsatzort: frei ? body.einsatzort?.trim() || null : null,
           titel,
           beschreibung: body.beschreibung?.trim() || null,
           status: 'neu',

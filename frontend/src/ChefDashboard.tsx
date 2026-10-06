@@ -2,17 +2,18 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { logout, type User } from './api'
 import {
   ladeAuftraege,
-  ladeKunden,
   ladeZuweisbare,
   erstelleAuftrag,
-  erstelleKunde,
   weiseAuftragZu,
   type AuftragRow,
-  type Kunde,
   type Zuweisbar,
 } from './chefApi'
 import { formatEuro, formatDatum, formatStunden } from './format'
 import StatusBadge from './StatusBadge'
+import { ladeKontext, ladeObjekte, type Kontext, type Objekt } from './objekteApi'
+import Modal from './objekte/Modal'
+import ObjektFormular from './objekte/ObjektFormular'
+import EinheitFormular from './objekte/EinheitFormular'
 
 export default function ChefDashboard({
   user,
@@ -24,20 +25,14 @@ export default function ChefDashboard({
   eingebettet?: boolean
 }) {
   const [auftraege, setAuftraege] = useState<AuftragRow[]>([])
-  const [kunden, setKunden] = useState<Kunde[]>([])
   const [monteure, setMonteure] = useState<Zuweisbar[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [zeigeFormular, setZeigeFormular] = useState(false)
 
   async function neuLaden() {
     try {
-      const [a, k, m] = await Promise.all([
-        ladeAuftraege(),
-        ladeKunden(),
-        ladeZuweisbare(),
-      ])
+      const [a, m] = await Promise.all([ladeAuftraege(), ladeZuweisbare()])
       setAuftraege(a)
-      setKunden(k)
       setMonteure(m)
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'Fehler beim Laden')
@@ -120,7 +115,6 @@ export default function ChefDashboard({
 
       {zeigeFormular && (
         <NeuerAuftrag
-          kunden={kunden}
           onFertig={() => {
             setZeigeFormular(false)
             neuLaden()
@@ -140,40 +134,65 @@ export default function ChefDashboard({
 }
 
 function NeuerAuftrag({
-  kunden,
   onFertig,
   onFehler,
 }: {
-  kunden: Kunde[]
   onFertig: () => void
   onFehler: (f: string | null) => void
 }) {
-  const [kundeId, setKundeId] = useState('')
-  const [neuerKunde, setNeuerKunde] = useState(false)
-  const [kundeName, setKundeName] = useState('')
-  const [kundeAdresse, setKundeAdresse] = useState('')
-  const [kundeTelefon, setKundeTelefon] = useState('')
+  const [objekte, setObjekte] = useState<Objekt[]>([])
+  const [frei, setFrei] = useState(false)
+  const [objektId, setObjektId] = useState('')
+  const [einheitId, setEinheitId] = useState('')
+  const [einsatzort, setEinsatzort] = useState('')
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
+  const [kontext, setKontext] = useState<Kontext | null>(null)
+  const [dialog, setDialog] = useState<'objekt' | 'einheit' | null>(null)
   const [laedt, setLaedt] = useState(false)
+
+  async function objekteLaden() {
+    try {
+      setObjekte((await ladeObjekte()).filter((o) => !o.archiviert))
+    } catch (err) {
+      onFehler(err instanceof Error ? err.message : 'Fehler beim Laden')
+    }
+  }
+
+  useEffect(() => {
+    objekteLaden()
+  }, [])
+
+  const objekt = objekte.find((o) => o.id === objektId) ?? null
+
+  // Zeigt die geerbten Daten (Hausverwaltung, Ansprechpartner, Vor Ort) zum Bezug.
+  async function bezugWaehlen(neuObjekt: string, neueEinheit: string) {
+    setObjektId(neuObjekt)
+    setEinheitId(neueEinheit)
+    if (!neuObjekt) {
+      setKontext(null)
+      return
+    }
+    try {
+      setKontext(await ladeKontext(neuObjekt, neueEinheit || undefined))
+    } catch {
+      setKontext(null)
+    }
+  }
 
   async function absenden(e: FormEvent) {
     e.preventDefault()
     onFehler(null)
     setLaedt(true)
     try {
-      let zielKundeId = kundeId
-      if (neuerKunde) {
-        if (!kundeName.trim()) throw new Error('Kundenname ist erforderlich')
-        const k = await erstelleKunde({
-          name: kundeName,
-          adresse: kundeAdresse,
-          telefon: kundeTelefon,
-        })
-        zielKundeId = k.id
-      }
-      if (!zielKundeId) throw new Error('Bitte einen Kunden wählen')
-      await erstelleAuftrag({ kundeId: zielKundeId, titel, beschreibung })
+      if (!frei && !objektId) throw new Error('Bitte ein Objekt wählen oder „Freier Auftrag" nutzen')
+      await erstelleAuftrag({
+        objektId: frei ? null : objektId,
+        einheitId: frei ? null : einheitId || null,
+        einsatzort: frei ? einsatzort : undefined,
+        titel,
+        beschreibung,
+      })
       onFertig()
     } catch (err) {
       onFehler(err instanceof Error ? err.message : 'Anlegen fehlgeschlagen')
@@ -186,49 +205,74 @@ function NeuerAuftrag({
     <form onSubmit={absenden} className="formular karte-innen">
       <h2>Neuer Auftrag</h2>
 
-      <label>
-        Kunde
-        <div className="kunde-wahl">
-          {!neuerKunde ? (
-            <select
-              value={kundeId}
-              onChange={(e) => setKundeId(e.target.value)}
-            >
-              <option value="">— Kunde wählen —</option>
-              {kunden.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="neuer-kunde">
-              <input
-                placeholder="Kundenname"
-                value={kundeName}
-                onChange={(e) => setKundeName(e.target.value)}
-              />
-              <input
-                placeholder="Adresse"
-                value={kundeAdresse}
-                onChange={(e) => setKundeAdresse(e.target.value)}
-              />
-              <input
-                placeholder="Telefon"
-                value={kundeTelefon}
-                onChange={(e) => setKundeTelefon(e.target.value)}
-              />
+      <div className="bezug-wahl">
+        <label>
+          <input type="radio" checked={!frei} onChange={() => setFrei(false)} /> Objektbezug
+        </label>
+        <label>
+          <input type="radio" checked={frei} onChange={() => setFrei(true)} /> Freier Auftrag
+        </label>
+      </div>
+
+      {!frei ? (
+        <>
+          <label>
+            Objekt
+            <div className="kunde-wahl">
+              <select value={objektId} onChange={(e) => bezugWaehlen(e.target.value, '')}>
+                <option value="">— Objekt wählen —</option>
+                {objekte.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                    {o.adresse ? ` – ${o.adresse}` : ''}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="abmelden" onClick={() => setDialog('objekt')}>
+                + Neues Objekt
+              </button>
             </div>
+          </label>
+          <label>
+            Einheit
+            <div className="kunde-wahl">
+              <select
+                value={einheitId}
+                disabled={!objekt}
+                onChange={(e) => bezugWaehlen(objektId, e.target.value)}
+              >
+                <option value="">— gesamtes Objekt —</option>
+                {objekt?.einheiten
+                  .filter((x) => !x.archiviert)
+                  .map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.bezeichnung}
+                    </option>
+                  ))}
+              </select>
+              <button type="button" className="abmelden" disabled={!objekt} onClick={() => setDialog('einheit')}>
+                + Neue Einheit
+              </button>
+            </div>
+          </label>
+          {kontext && (
+            <p className="hinweis-text">
+              Hausverwaltung: <strong>{kontext.hausverwaltung?.name ?? '—'}</strong>
+              {' · '}Ansprechpartner: <strong>{kontext.ansprechpartner?.name ?? '—'}</strong>
+              {' · '}Vor Ort: <strong>{kontext.vorOrt.name || '—'}</strong>
+            </p>
           )}
-          <button
-            type="button"
-            className="abmelden"
-            onClick={() => setNeuerKunde((v) => !v)}
-          >
-            {neuerKunde ? 'Bestehenden wählen' : '+ Neuer Kunde'}
-          </button>
-        </div>
-      </label>
+        </>
+      ) : (
+        <label>
+          Einsatzort (optional)
+          <input
+            value={einsatzort}
+            onChange={(e) => setEinsatzort(e.target.value)}
+            placeholder="z. B. Gartenstr. 5, 10115 Berlin"
+          />
+        </label>
+      )}
 
       <label>
         Titel
@@ -252,6 +296,32 @@ function NeuerAuftrag({
       <button type="submit" disabled={laedt}>
         {laedt ? 'Speichern …' : 'Auftrag anlegen'}
       </button>
+
+      {dialog === 'objekt' && (
+        <Modal titel="Neues Objekt" onSchliessen={() => setDialog(null)}>
+          <ObjektFormular
+            onAbbrechen={() => setDialog(null)}
+            onFertig={async (id) => {
+              setDialog(null)
+              await objekteLaden()
+              bezugWaehlen(id, '')
+            }}
+          />
+        </Modal>
+      )}
+      {dialog === 'einheit' && objekt && (
+        <Modal titel="Neue Einheit" onSchliessen={() => setDialog(null)}>
+          <EinheitFormular
+            objekt={objekt}
+            onAbbrechen={() => setDialog(null)}
+            onFertig={async (id) => {
+              setDialog(null)
+              await objekteLaden()
+              bezugWaehlen(objekt.id, id)
+            }}
+          />
+        </Modal>
+      )}
     </form>
   )
 }
@@ -285,7 +355,7 @@ function AuftragsListe({
             <span className="auftrag-summe">{formatEuro(a.summe)}</span>
           </div>
           <div className="auftrag-meta">
-            <span>Kunde: {a.kundeName ?? '—'}</span>
+            <span>Objekt: {a.ortLabel}</span>
             <span>Monteur: {a.monteurName ?? 'nicht zugewiesen'}</span>
             <span>Termin: {formatDatum(a.termin)}</span>
             <span>Stunden: {formatStunden(a.stunden)}</span>

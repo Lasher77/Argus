@@ -12,6 +12,7 @@ import { auftragRoutes } from './routes/auftraege.js'
 import { stammdatenRoutes } from './routes/stammdaten.js'
 import { arbeitRoutes } from './routes/arbeit.js'
 import { bueroRoutes } from './routes/buero.js'
+import { objekteRoutes } from './routes/objekte.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -54,6 +55,7 @@ await app.register(auftragRoutes)
 await app.register(stammdatenRoutes)
 await app.register(arbeitRoutes)
 await app.register(bueroRoutes)
+await app.register(objekteRoutes)
 
 // Einfacher Health-/API-Endpunkt – wird in Etappe 1 vom Frontend abgefragt.
 app.get('/api/health', async () => ({

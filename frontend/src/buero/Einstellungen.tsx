@@ -35,7 +35,8 @@ const MEHRZEILER = new Set(['mail_text_vorlage', 'zahlungshinweis'])
 // Beispielrechnung für die Live-Vorschau der Mail-Vorlagen.
 const BEISPIEL = {
   rechnungsnummer: '2026-0042',
-  kundenname: 'Müller GmbH',
+  kundenname: 'Hausverwaltung Meier GmbH',
+  empfaenger: 'Hausverwaltung Meier GmbH',
   betrag: '1.234,56 €',
   firmenname: 'Argus - Metallbau - S. Schellenberg',
 }

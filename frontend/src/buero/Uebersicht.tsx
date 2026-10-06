@@ -116,7 +116,7 @@ export default function Uebersicht() {
                 <span className="auftrag-summe">{formatEuro(a.summe)}</span>
               </div>
               <div className="auftrag-meta">
-                <span>Kunde: {a.kundeName ?? '—'}</span>
+                <span>Objekt: {a.ortLabel}</span>
                 <span>Erledigt: {formatDatum(a.erledigtAm)}</span>
               </div>
               <div className="auftrag-aktion">
@@ -154,7 +154,7 @@ export default function Uebersicht() {
             <tr>
               <th>Nummer</th>
               <th>Datum</th>
-              <th>Kunde</th>
+              <th>Empfänger</th>
               <th className="rechts">Betrag</th>
               <th>Status</th>
               <th></th>
@@ -166,7 +166,7 @@ export default function Uebersicht() {
                 <td>{r.nummer}</td>
                 <td>{formatDatum(r.datum)}</td>
                 <td>
-                  {r.kundeName}
+                  {r.empfaengerName}
                   {!r.auftragId && <span className="frei-hinweis"> (frei)</span>}
                 </td>
                 <td className="rechts">{formatEuro(r.brutto)}</td>
@@ -188,7 +188,7 @@ export default function Uebersicht() {
                     type="button"
                     className="neben-button klein"
                     onClick={() => perMailVersenden(r.id)}
-                    title={r.kundeEmail || 'Empfängerfeld leer'}
+                    title={r.empfaengerEmail || 'Empfängerfeld leer'}
                   >
                     Per E-Mail
                   </button>

@@ -56,8 +56,9 @@ Stoppen mit `Strg+C`, vollständiges Aufräumen mit `docker compose down`.
 
 ## Datenbank & Beispieldaten
 
-Das Schema (Tabellen `users`, `kunden`, `auftraege`, `auftrag_material`,
-`material_katalog`, `fotos`, `mwst_saetze`) wird mit **Drizzle** verwaltet.
+Das Schema (u. a. `users`, `hausverwaltungen`, `ansprechpartner`, `objekte`,
+`einheiten`, `auftraege`, `auftrag_material`, `material_katalog`, `fotos`,
+`rechnungen`, `firma_stammdaten`) wird mit **Drizzle** verwaltet.
 Die Migrationen liegen in `backend/drizzle/` und werden beim App-Start
 **automatisch** angewendet – du musst nichts manuell migrieren.
 
@@ -75,8 +76,19 @@ Damit werden angelegt:
 | Monteur | `tom@wits-berlin.org`   | `monteur`|
 | Büro    | `buero@wits-berlin.org` | `buero`  |
 
-Außerdem drei Beispielkunden, fünf Material-Katalog-Einträge und der
-MwSt-Satz 19 %. Die Test-Passwörter bitte vor dem Produktivbetrieb ändern.
+Außerdem Demo-Objekte (zwei Hausverwaltungen mit Ansprechpartnern, drei Objekte
+mit Einheiten), fünf Material-Katalog-Einträge und der MwSt-Satz 19 %. Die
+Demo-Objekte kannst du im Büro-Tab **Objekte** archivieren oder eigene anlegen.
+Die Test-Passwörter bitte vor dem Produktivbetrieb ändern.
+
+> **Achtung beim Update auf das Objekt-Modell:** Migration `0003_objekte`
+> ersetzt `kunden` durch Hausverwaltungen/Objekte/Einheiten und ist bewusst
+> **destruktiv**: Aufträge, Rechnungen, Material und Fotos werden gelöscht und der
+> Rechnungsnummern-Zähler beginnt neu bei `0001`. Benutzer, Firmen-Stammdaten,
+> Material-Katalog und Logo bleiben erhalten. Vor dem Update auf einem Server mit
+> echten Daten ein Backup ziehen (siehe „Backups & Restore"). Übrig gebliebene
+> Dateien in `/data/rechnungen` und `/data/fotos` sind harmlos und können
+> gelöscht werden: `docker compose exec app sh -c 'rm -f /data/rechnungen/* /data/fotos/*'`
 
 > Schema ändern: Felder in `backend/src/db/schema.ts` anpassen, dann
 > `cd backend && npm run db:generate` ausführen – Drizzle erzeugt eine neue

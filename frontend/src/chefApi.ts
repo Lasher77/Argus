@@ -10,20 +10,15 @@ export interface AuftragRow {
   stundensatz: number | null
   erstelltAm: string
   erledigtAm: string | null
-  kundeName: string | null
+  ortLabel: string
+  objektId: string | null
+  einheitId: string | null
+  einsatzort: string | null
   monteurId: string | null
   monteurName: string | null
   materialAnzahl: number
   fotoAnzahl: number
   summe: number
-}
-
-export interface Kunde {
-  id: string
-  name: string
-  adresse: string | null
-  telefon: string | null
-  email: string | null
 }
 
 export interface Zuweisbar {
@@ -56,18 +51,12 @@ async function senden<T>(
 }
 
 export const ladeAuftraege = () => holen<AuftragRow[]>('/api/auftraege')
-export const ladeKunden = () => holen<Kunde[]>('/api/kunden')
 export const ladeZuweisbare = () => holen<Zuweisbar[]>('/api/zuweisbare')
 
-export const erstelleKunde = (daten: {
-  name: string
-  adresse?: string
-  telefon?: string
-  email?: string
-}) => senden<{ id: string; name: string }>('/api/kunden', 'POST', daten)
-
 export const erstelleAuftrag = (daten: {
-  kundeId: string
+  objektId?: string | null
+  einheitId?: string | null
+  einsatzort?: string
   titel: string
   beschreibung?: string
 }) => senden<{ id: string }>('/api/auftraege', 'POST', daten)

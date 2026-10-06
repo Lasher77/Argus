@@ -9,11 +9,11 @@ import {
   auftraege,
   auftragMaterial,
   fotos,
-  kunden,
   materialKatalog,
 } from '../db/schema.js'
 import { requireRole } from '../auth.js'
 import { istErlaubterStatuswechsel } from '../lib/status.js'
+import { ladeKontext } from '../lib/objekte.js'
 
 // Speicherort der Fotos im Dateisystem (Docker-Volume), Pfad steht in der DB.
 const FOTO_DIR = process.env.FOTO_DIR ?? '/data/fotos'
@@ -63,11 +63,11 @@ export async function arbeitRoutes(app: FastifyInstance) {
           termin: auftraege.termin,
           stunden: auftraege.stunden,
           stundensatz: auftraege.stundensatz,
-          kundeName: kunden.name,
-          kundeAdresse: kunden.adresse,
+          objektId: auftraege.objektId,
+          einheitId: auftraege.einheitId,
+          einsatzort: auftraege.einsatzort,
         })
         .from(auftraege)
-        .leftJoin(kunden, eq(auftraege.kundeId, kunden.id))
         .where(
           and(
             eq(auftraege.monteurId, userId),
@@ -95,7 +95,13 @@ export async function arbeitRoutes(app: FastifyInstance) {
         : []
       const fotoMap = new Map(fotoCounts.map((f) => [f.auftragId, f.anzahl]))
 
-      return rows.map((r) => ({
+      // Objekt-/Einheit-Kontext je Auftrag auflösen (effektiver Ansprechpartner,
+      // Vor-Ort-Kontakt, Adresse). Die Anzahl eigener Aufträge ist klein.
+      const kontexte = await Promise.all(
+        rows.map((r) => ladeKontext(r.objektId, r.einheitId)),
+      )
+
+      return rows.map((r, i) => ({
         id: r.id,
         titel: r.titel,
         beschreibung: r.beschreibung,
@@ -103,8 +109,16 @@ export async function arbeitRoutes(app: FastifyInstance) {
         termin: r.termin,
         stunden: Number(r.stunden ?? 0),
         stundensatz: r.stundensatz === null ? null : Number(r.stundensatz),
-        kundeName: r.kundeName,
-        kundeAdresse: r.kundeAdresse,
+        ortLabel: kontexte[i].ortLabel,
+        // Objektadresse; bei freien Aufträgen der Freitext-Einsatzort.
+        adresse: kontexte[i].adresse || r.einsatzort || '',
+        ansprechpartner: kontexte[i].ansprechpartner
+          ? {
+              name: kontexte[i].ansprechpartner!.name,
+              telefon: kontexte[i].ansprechpartner!.telefon,
+            }
+          : null,
+        vorOrt: kontexte[i].vorOrt,
         fotoAnzahl: fotoMap.get(r.id) ?? 0,
         material: mats
           .filter((m) => m.auftragId === r.id)

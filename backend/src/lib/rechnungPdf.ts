@@ -8,7 +8,8 @@ export interface RechnungPdfDaten {
   datum: string // YYYY-MM-DD
   leistungsdatum?: string | null
   firma: Stammwerte
-  kunde: { name: string; adresse: string | null; nummer: string }
+  // Rechnungsempfänger: drei Adresszeilen + optional Kundennr. (siehe CLAUDE.md §3).
+  empfaenger: { empfaenger: string; strasse: string; ort: string; kundennr?: string }
   objekt?: string | null
   beschreibung?: string | null
   positionen: Position[]
@@ -86,7 +87,7 @@ export function erzeugeRechnungPdf(
       my += 13
     }
     metaZeile('Rechnungsnr:', daten.nummer)
-    metaZeile('Kundennr:', daten.kunde.nummer)
+    if (daten.empfaenger.kundennr) metaZeile('Kundennr:', daten.empfaenger.kundennr)
     metaZeile('Datum:', datumDe(daten.datum))
     my += 6
     if (f.telefon) metaZeile('Telefon:', f.telefon)
@@ -106,7 +107,11 @@ export function erzeugeRechnungPdf(
       { width: 270 },
     )
     doc.font('Helvetica').fontSize(10.5).fillColor('#111')
-    const empf = [daten.kunde.name, daten.kunde.adresse ?? ''].filter(Boolean)
+    const empf = [
+      daten.empfaenger.empfaenger,
+      daten.empfaenger.strasse,
+      daten.empfaenger.ort,
+    ].filter(Boolean)
     doc.text(empf.join('\n'), M, 168, { width: 270 })
 
     // --- Überschrift ---

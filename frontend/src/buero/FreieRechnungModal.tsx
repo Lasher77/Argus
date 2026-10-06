@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
-  ladeKunden,
-  erstelleKunde,
+  erstelleFreieRechnung,
   ladeKatalog,
   ladeStammdaten,
-  erstelleFreieRechnung,
-  type Kunde,
+  type EmpfaengerEingabe,
   type KatalogItem,
 } from '../bueroApi'
+import { ladeKontext, ladeObjekte, type Herkunft, type Kandidat, type Objekt } from '../objekteApi'
 import { formatEuro } from '../format'
+import EmpfaengerWahl, { leererEmpfaenger } from './EmpfaengerWahl'
 
 interface EditPos {
   bezeichnung: string
@@ -21,8 +21,9 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100
 }
 
-// Freie Rechnung ohne Auftrag: Kunde wählen oder neu anlegen, Positionen frei
-// oder per Katalog-Antippen + Arbeitszeit, Vorschau, Erstellung.
+// Freie Rechnung ohne Auftrag: optional ein Objekt/eine Einheit als Bezug
+// (liefert die wählbaren Rechnungsadressen), sonst freie Eingabe des
+// Empfängers; Positionen frei oder per Katalog-Antippen + Arbeitszeit.
 export default function FreieRechnungModal({
   onAbbrechen,
   onErstellt,
@@ -32,16 +33,16 @@ export default function FreieRechnungModal({
   onErstellt: () => void
   onFehler: (f: string | null) => void
 }) {
-  const [kunden, setKunden] = useState<Kunde[]>([])
+  const [objekte, setObjekte] = useState<Objekt[]>([])
   const [katalog, setKatalog] = useState<KatalogItem[]>([])
   const [mwstSatz, setMwstSatz] = useState(19)
   const [standardSatz, setStandardSatz] = useState(60)
 
-  const [kundeId, setKundeId] = useState('')
-  const [neuerKunde, setNeuerKunde] = useState(false)
-  const [neuKundeName, setNeuKundeName] = useState('')
-  const [neuKundeAdresse, setNeuKundeAdresse] = useState('')
-  const [neuKundeEmail, setNeuKundeEmail] = useState('')
+  const [objektId, setObjektId] = useState('')
+  const [einheitId, setEinheitId] = useState('')
+  const [kandidaten, setKandidaten] = useState<Kandidat[]>([])
+  const [standardKey, setStandardKey] = useState<Herkunft | null>(null)
+  const [empfaenger, setEmpfaenger] = useState<EmpfaengerEingabe>(leererEmpfaenger())
 
   const [objekt, setObjekt] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -49,9 +50,9 @@ export default function FreieRechnungModal({
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    Promise.all([ladeKunden(), ladeKatalog(), ladeStammdaten()])
-      .then(([k, m, s]) => {
-        setKunden(k)
+    Promise.all([ladeObjekte(), ladeKatalog(), ladeStammdaten()])
+      .then(([o, m, s]) => {
+        setObjekte(o.filter((x) => !x.archiviert))
         setKatalog(m)
         const aktuell = (feld: string) =>
           s.find((f) => f.feldName === feld)?.eintraege.find((e) => e.aktuell)?.wert
@@ -63,18 +64,35 @@ export default function FreieRechnungModal({
       .catch((err) => onFehler(err instanceof Error ? err.message : 'Fehler beim Laden'))
   }, [])
 
+  const gewaehltesObjekt = useMemo(
+    () => objekte.find((o) => o.id === objektId) ?? null,
+    [objekte, objektId],
+  )
+
+  // Bezug geändert -> wählbare Rechnungsadressen und "Objekt:"-Zeile neu bestimmen.
+  async function bezugGeaendert(neuObjekt: string, neueEinheit: string) {
+    setObjektId(neuObjekt)
+    setEinheitId(neueEinheit)
+    if (!neuObjekt) {
+      setKandidaten([])
+      setStandardKey(null)
+      return
+    }
+    try {
+      const k = await ladeKontext(neuObjekt, neueEinheit || undefined)
+      setKandidaten(k.kandidaten)
+      setStandardKey(k.standardKey)
+      setObjekt(k.ortLabel)
+    } catch (err) {
+      onFehler(err instanceof Error ? err.message : 'Fehler beim Laden')
+    }
+  }
+
   const summen = useMemo(() => {
-    const netto = round2(
-      positionen.reduce((s, p) => s + round2(p.menge * p.einzelpreis), 0),
-    )
+    const netto = round2(positionen.reduce((s, p) => s + round2(p.menge * p.einzelpreis), 0))
     const mwstBetrag = round2((netto * mwstSatz) / 100)
     return { netto, mwstBetrag, brutto: round2(netto + mwstBetrag) }
   }, [positionen, mwstSatz])
-
-  const ausgewKunde = useMemo(
-    () => kunden.find((k) => k.id === kundeId) ?? null,
-    [kundeId, kunden],
-  )
 
   function aendern(i: number, feld: keyof EditPos, wert: string) {
     setPositionen((alt) =>
@@ -90,47 +108,31 @@ export default function FreieRechnungModal({
 
   const entfernen = (i: number) => setPositionen((alt) => alt.filter((_, idx) => idx !== i))
 
-  function frei() {
-    setPositionen((alt) => [
-      ...alt,
-      { bezeichnung: '', menge: 1, einheit: 'Stück', einzelpreis: 0 },
-    ])
-  }
+  const frei = () =>
+    setPositionen((alt) => [...alt, { bezeichnung: '', menge: 1, einheit: 'Stück', einzelpreis: 0 }])
 
-  function arbeitszeit() {
+  const arbeitszeit = () =>
     setPositionen((alt) => [
       ...alt,
       { bezeichnung: 'Arbeitszeit', menge: 1, einheit: 'Std', einzelpreis: standardSatz },
     ])
-  }
 
-  function ausKatalog(k: KatalogItem) {
+  const ausKatalog = (k: KatalogItem) =>
     setPositionen((alt) => [
       ...alt,
       { bezeichnung: k.bezeichnung, menge: 1, einheit: k.einheit, einzelpreis: Number(k.einzelpreis) },
     ])
-  }
 
   async function speichern(e: FormEvent) {
     e.preventDefault()
     onFehler(null)
     setBusy(true)
     try {
-      let zielKundeId = kundeId
-      if (neuerKunde) {
-        if (!neuKundeName.trim()) throw new Error('Kundenname ist erforderlich')
-        const neu = await erstelleKunde({
-          name: neuKundeName,
-          adresse: neuKundeAdresse,
-          email: neuKundeEmail,
-        })
-        zielKundeId = neu.id
-      }
-      if (!zielKundeId) throw new Error('Bitte einen Kunden wählen')
       if (positionen.length === 0) throw new Error('Mindestens eine Position erforderlich')
-
       await erstelleFreieRechnung({
-        kundeId: zielKundeId,
+        objektId: objektId || null,
+        einheitId: einheitId || null,
+        empfaenger,
         objekt: objekt.trim() || undefined,
         beschreibung: beschreibung.trim() || undefined,
         positionen,
@@ -148,66 +150,51 @@ export default function FreieRechnungModal({
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Neue Rechnung erstellen</h2>
 
-        <label className="modal-feld">
-          Kunde
-          <div className="kunde-wahl">
-            {!neuerKunde ? (
-              <select value={kundeId} onChange={(e) => setKundeId(e.target.value)}>
-                <option value="">— Kunde wählen —</option>
-                {kunden.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.name}
+        <div className="zeile2">
+          <label className="modal-feld">
+            Objekt (optional)
+            <select value={objektId} onChange={(e) => bezugGeaendert(e.target.value, '')}>
+              <option value="">— kein Objektbezug —</option>
+              {objekte.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="modal-feld">
+            Einheit (optional)
+            <select
+              value={einheitId}
+              disabled={!gewaehltesObjekt}
+              onChange={(e) => bezugGeaendert(objektId, e.target.value)}
+            >
+              <option value="">— gesamtes Objekt —</option>
+              {gewaehltesObjekt?.einheiten
+                .filter((x) => !x.archiviert)
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.bezeichnung}
                   </option>
                 ))}
-              </select>
-            ) : (
-              <div className="neuer-kunde">
-                <input
-                  placeholder="Kundenname"
-                  value={neuKundeName}
-                  onChange={(e) => setNeuKundeName(e.target.value)}
-                />
-                <input
-                  placeholder="Adresse"
-                  value={neuKundeAdresse}
-                  onChange={(e) => setNeuKundeAdresse(e.target.value)}
-                />
-                <input
-                  placeholder="E-Mail"
-                  type="email"
-                  value={neuKundeEmail}
-                  onChange={(e) => setNeuKundeEmail(e.target.value)}
-                />
-              </div>
-            )}
-            <button
-              type="button"
-              className="abmelden"
-              onClick={() => setNeuerKunde((v) => !v)}
-            >
-              {neuerKunde ? 'Bestehenden wählen' : '+ Neuer Kunde'}
-            </button>
-          </div>
-        </label>
+            </select>
+          </label>
+        </div>
 
-        {ausgewKunde && !ausgewKunde.email && (
-          <p className="hinweis-text">
-            Hinweis: für diesen Kunden ist keine E-Mail hinterlegt; der „Per E-Mail"-Button
-            wird das Empfängerfeld leer lassen.
-          </p>
-        )}
+        <EmpfaengerWahl
+          kandidaten={kandidaten}
+          standardKey={standardKey}
+          wert={empfaenger}
+          onChange={setEmpfaenger}
+        />
 
         <label className="modal-feld">
-          Objekt
+          Objekt (Zeile auf der Rechnung)
           <input value={objekt} onChange={(e) => setObjekt(e.target.value)} />
         </label>
         <label className="modal-feld">
           Beschreibung
-          <textarea
-            rows={2}
-            value={beschreibung}
-            onChange={(e) => setBeschreibung(e.target.value)}
-          />
+          <textarea rows={2} value={beschreibung} onChange={(e) => setBeschreibung(e.target.value)} />
         </label>
 
         <div className="m-block-kopf" style={{ marginTop: '0.6rem' }}>
@@ -219,12 +206,7 @@ export default function FreieRechnungModal({
             <span className="katalog-preis">{formatEuro(standardSatz)}/Std</span>
           </button>
           {katalog.map((k) => (
-            <button
-              key={k.id}
-              type="button"
-              className="katalog-button"
-              onClick={() => ausKatalog(k)}
-            >
+            <button key={k.id} type="button" className="katalog-button" onClick={() => ausKatalog(k)}>
               {k.bezeichnung}
               <span className="katalog-preis">{formatEuro(Number(k.einzelpreis))}</span>
             </button>
@@ -250,46 +232,20 @@ export default function FreieRechnungModal({
               {positionen.map((p, i) => (
                 <tr key={i}>
                   <td>
-                    <input
-                      value={p.bezeichnung}
-                      onChange={(e) => aendern(i, 'bezeichnung', e.target.value)}
-                    />
+                    <input value={p.bezeichnung} onChange={(e) => aendern(i, 'bezeichnung', e.target.value)} />
                   </td>
                   <td>
-                    <input
-                      className="schmal"
-                      type="number"
-                      step="0.01"
-                      value={p.menge}
-                      onChange={(e) => aendern(i, 'menge', e.target.value)}
-                    />
+                    <input className="schmal" type="number" step="0.01" value={p.menge} onChange={(e) => aendern(i, 'menge', e.target.value)} />
                   </td>
                   <td>
-                    <input
-                      className="schmal"
-                      value={p.einheit}
-                      onChange={(e) => aendern(i, 'einheit', e.target.value)}
-                    />
+                    <input className="schmal" value={p.einheit} onChange={(e) => aendern(i, 'einheit', e.target.value)} />
                   </td>
                   <td>
-                    <input
-                      className="schmal"
-                      type="number"
-                      step="0.01"
-                      value={p.einzelpreis}
-                      onChange={(e) => aendern(i, 'einzelpreis', e.target.value)}
-                    />
+                    <input className="schmal" type="number" step="0.01" value={p.einzelpreis} onChange={(e) => aendern(i, 'einzelpreis', e.target.value)} />
                   </td>
-                  <td className="rechts">
-                    {formatEuro(round2(p.menge * p.einzelpreis))}
-                  </td>
+                  <td className="rechts">{formatEuro(round2(p.menge * p.einzelpreis))}</td>
                   <td>
-                    <button
-                      type="button"
-                      className="mat-loeschen"
-                      onClick={() => entfernen(i)}
-                      aria-label="Position entfernen"
-                    >
+                    <button type="button" className="mat-loeschen" onClick={() => entfernen(i)} aria-label="Position entfernen">
                       ✕
                     </button>
                   </td>

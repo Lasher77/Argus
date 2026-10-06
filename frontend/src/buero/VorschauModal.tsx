@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ladeVorschau,
   erstelleRechnung,
+  type EmpfaengerEingabe,
   type Position,
 } from '../bueroApi'
+import type { Herkunft, Kandidat } from '../objekteApi'
 import { formatEuro } from '../format'
+import EmpfaengerWahl, { leererEmpfaenger } from './EmpfaengerWahl'
 
 interface EditPos {
   bezeichnung: string
@@ -32,7 +35,9 @@ export default function VorschauModal({
   const [objekt, setObjekt] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
   const [mwstSatz, setMwstSatz] = useState(19)
-  const [kunde, setKunde] = useState('')
+  const [kandidaten, setKandidaten] = useState<Kandidat[]>([])
+  const [standardKey, setStandardKey] = useState<Herkunft | null>(null)
+  const [empfaenger, setEmpfaenger] = useState<EmpfaengerEingabe>(leererEmpfaenger())
   const [laedt, setLaedt] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -50,7 +55,8 @@ export default function VorschauModal({
         setObjekt(v.objekt ?? '')
         setBeschreibung(v.beschreibung ?? '')
         setMwstSatz(v.mwstSatz)
-        setKunde(v.kunde.name ?? '')
+        setKandidaten(v.kandidaten)
+        setStandardKey(v.standardKey)
       })
       .catch((err) => onFehler(err instanceof Error ? err.message : 'Fehler'))
       .finally(() => setLaedt(false))
@@ -99,7 +105,7 @@ export default function VorschauModal({
     setBusy(true)
     onFehler(null)
     try {
-      await erstelleRechnung(auftragId, { positionen, objekt, beschreibung })
+      await erstelleRechnung(auftragId, { positionen, objekt, beschreibung, empfaenger })
       onErstellt()
     } catch (err) {
       onFehler(err instanceof Error ? err.message : 'Erstellen fehlgeschlagen')
@@ -116,9 +122,12 @@ export default function VorschauModal({
           <p>lädt …</p>
         ) : (
           <>
-            <p className="modal-kunde">
-              Kunde: <strong>{kunde}</strong>
-            </p>
+            <EmpfaengerWahl
+              kandidaten={kandidaten}
+              standardKey={standardKey}
+              wert={empfaenger}
+              onChange={setEmpfaenger}
+            />
             <label className="modal-feld">
               Objekt
               <input value={objekt} onChange={(e) => setObjekt(e.target.value)} />

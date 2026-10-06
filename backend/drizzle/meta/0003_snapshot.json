@@ -1,0 +1,1168 @@
+{
+  "id": "c65c4287-dd4b-4c21-b847-e447ef115d3c",
+  "prevId": "4670b713-1e81-4dac-b7bd-432dc07fc0f1",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.ansprechpartner": {
+      "name": "ansprechpartner",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rolle": {
+          "name": "rolle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telefon": {
+          "name": "telefon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notiz": {
+          "name": "notiz",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hausverwaltung_id": {
+          "name": "hausverwaltung_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archiviert": {
+          "name": "archiviert",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ansprechpartner_hausverwaltung_id_hausverwaltungen_id_fk": {
+          "name": "ansprechpartner_hausverwaltung_id_hausverwaltungen_id_fk",
+          "tableFrom": "ansprechpartner",
+          "tableTo": "hausverwaltungen",
+          "columnsFrom": [
+            "hausverwaltung_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.auftraege": {
+      "name": "auftraege",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "objekt_id": {
+          "name": "objekt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "einheit_id": {
+          "name": "einheit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "einsatzort": {
+          "name": "einsatzort",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "titel": {
+          "name": "titel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "beschreibung": {
+          "name": "beschreibung",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "auftrag_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'neu'"
+        },
+        "monteur_id": {
+          "name": "monteur_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "termin": {
+          "name": "termin",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stundensatz": {
+          "name": "stundensatz",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stunden": {
+          "name": "stunden",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "erstellt_am": {
+          "name": "erstellt_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "erledigt_am": {
+          "name": "erledigt_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "auftraege_objekt_id_objekte_id_fk": {
+          "name": "auftraege_objekt_id_objekte_id_fk",
+          "tableFrom": "auftraege",
+          "tableTo": "objekte",
+          "columnsFrom": [
+            "objekt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "auftraege_einheit_id_einheiten_id_fk": {
+          "name": "auftraege_einheit_id_einheiten_id_fk",
+          "tableFrom": "auftraege",
+          "tableTo": "einheiten",
+          "columnsFrom": [
+            "einheit_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "auftraege_monteur_id_users_id_fk": {
+          "name": "auftraege_monteur_id_users_id_fk",
+          "tableFrom": "auftraege",
+          "tableTo": "users",
+          "columnsFrom": [
+            "monteur_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.auftrag_material": {
+      "name": "auftrag_material",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "auftrag_id": {
+          "name": "auftrag_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bezeichnung": {
+          "name": "bezeichnung",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "einzelpreis": {
+          "name": "einzelpreis",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "menge": {
+          "name": "menge",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'1'"
+        },
+        "einheit": {
+          "name": "einheit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Stück'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "auftrag_material_auftrag_id_auftraege_id_fk": {
+          "name": "auftrag_material_auftrag_id_auftraege_id_fk",
+          "tableFrom": "auftrag_material",
+          "tableTo": "auftraege",
+          "columnsFrom": [
+            "auftrag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.einheiten": {
+      "name": "einheiten",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "objekt_id": {
+          "name": "objekt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bezeichnung": {
+          "name": "bezeichnung",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hausverwaltung_id": {
+          "name": "hausverwaltung_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ansprechpartner_id": {
+          "name": "ansprechpartner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vor_ort_name": {
+          "name": "vor_ort_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vor_ort_telefon": {
+          "name": "vor_ort_telefon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vor_ort_email": {
+          "name": "vor_ort_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_quelle": {
+          "name": "rechnung_quelle",
+          "type": "rechnung_quelle",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'objekt'"
+        },
+        "rechnung_empfaenger": {
+          "name": "rechnung_empfaenger",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_strasse": {
+          "name": "rechnung_strasse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_ort": {
+          "name": "rechnung_ort",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_email": {
+          "name": "rechnung_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_kundennr": {
+          "name": "rechnung_kundennr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notiz": {
+          "name": "notiz",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archiviert": {
+          "name": "archiviert",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "einheiten_objekt_id_objekte_id_fk": {
+          "name": "einheiten_objekt_id_objekte_id_fk",
+          "tableFrom": "einheiten",
+          "tableTo": "objekte",
+          "columnsFrom": [
+            "objekt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "einheiten_hausverwaltung_id_hausverwaltungen_id_fk": {
+          "name": "einheiten_hausverwaltung_id_hausverwaltungen_id_fk",
+          "tableFrom": "einheiten",
+          "tableTo": "hausverwaltungen",
+          "columnsFrom": [
+            "hausverwaltung_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "einheiten_ansprechpartner_id_ansprechpartner_id_fk": {
+          "name": "einheiten_ansprechpartner_id_ansprechpartner_id_fk",
+          "tableFrom": "einheiten",
+          "tableTo": "ansprechpartner",
+          "columnsFrom": [
+            "ansprechpartner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.firma_stammdaten": {
+      "name": "firma_stammdaten",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "feld_name": {
+          "name": "feld_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wert": {
+          "name": "wert",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gueltig_von": {
+          "name": "gueltig_von",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gueltig_bis": {
+          "name": "gueltig_bis",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fotos": {
+      "name": "fotos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "auftrag_id": {
+          "name": "auftrag_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pfad": {
+          "name": "pfad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hochgeladen_am": {
+          "name": "hochgeladen_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fotos_auftrag_id_auftraege_id_fk": {
+          "name": "fotos_auftrag_id_auftraege_id_fk",
+          "tableFrom": "fotos",
+          "tableTo": "auftraege",
+          "columnsFrom": [
+            "auftrag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hausverwaltungen": {
+      "name": "hausverwaltungen",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notiz": {
+          "name": "notiz",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_empfaenger": {
+          "name": "rechnung_empfaenger",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_strasse": {
+          "name": "rechnung_strasse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_ort": {
+          "name": "rechnung_ort",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_email": {
+          "name": "rechnung_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_kundennr": {
+          "name": "rechnung_kundennr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archiviert": {
+          "name": "archiviert",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.material_katalog": {
+      "name": "material_katalog",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "bezeichnung": {
+          "name": "bezeichnung",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "einzelpreis": {
+          "name": "einzelpreis",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "einheit": {
+          "name": "einheit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Stück'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mwst_saetze": {
+      "name": "mwst_saetze",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "satz": {
+          "name": "satz",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gueltig_ab": {
+          "name": "gueltig_ab",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gueltig_bis": {
+          "name": "gueltig_bis",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.objekte": {
+      "name": "objekte",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strasse": {
+          "name": "strasse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hausnummer": {
+          "name": "hausnummer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plz": {
+          "name": "plz",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ort": {
+          "name": "ort",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hausverwaltung_id": {
+          "name": "hausverwaltung_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ansprechpartner_id": {
+          "name": "ansprechpartner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vor_ort_name": {
+          "name": "vor_ort_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vor_ort_telefon": {
+          "name": "vor_ort_telefon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vor_ort_email": {
+          "name": "vor_ort_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_quelle": {
+          "name": "rechnung_quelle",
+          "type": "rechnung_quelle",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'hausverwaltung'"
+        },
+        "rechnung_empfaenger": {
+          "name": "rechnung_empfaenger",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_strasse": {
+          "name": "rechnung_strasse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_ort": {
+          "name": "rechnung_ort",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_email": {
+          "name": "rechnung_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_kundennr": {
+          "name": "rechnung_kundennr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notiz": {
+          "name": "notiz",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archiviert": {
+          "name": "archiviert",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "objekte_hausverwaltung_id_hausverwaltungen_id_fk": {
+          "name": "objekte_hausverwaltung_id_hausverwaltungen_id_fk",
+          "tableFrom": "objekte",
+          "tableTo": "hausverwaltungen",
+          "columnsFrom": [
+            "hausverwaltung_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "objekte_ansprechpartner_id_ansprechpartner_id_fk": {
+          "name": "objekte_ansprechpartner_id_ansprechpartner_id_fk",
+          "tableFrom": "objekte",
+          "tableTo": "ansprechpartner",
+          "columnsFrom": [
+            "ansprechpartner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rechnung_zaehler": {
+      "name": "rechnung_zaehler",
+      "schema": "",
+      "columns": {
+        "jahr": {
+          "name": "jahr",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "letzte_nr": {
+          "name": "letzte_nr",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rechnungen": {
+      "name": "rechnungen",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "auftrag_id": {
+          "name": "auftrag_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "objekt_id": {
+          "name": "objekt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "einheit_id": {
+          "name": "einheit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nummer": {
+          "name": "nummer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jahr": {
+          "name": "jahr",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "laufende_nr": {
+          "name": "laufende_nr",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "datum": {
+          "name": "datum",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "leistungsdatum": {
+          "name": "leistungsdatum",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "rechnung_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'offen'"
+        },
+        "bezahlt_am": {
+          "name": "bezahlt_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "objekt": {
+          "name": "objekt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "beschreibung": {
+          "name": "beschreibung",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firma_snapshot": {
+          "name": "firma_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "empfaenger_snapshot": {
+          "name": "empfaenger_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "positionen": {
+          "name": "positionen",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "netto": {
+          "name": "netto",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mwst_satz": {
+          "name": "mwst_satz",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mwst_betrag": {
+          "name": "mwst_betrag",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "brutto": {
+          "name": "brutto",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pdf_pfad": {
+          "name": "pdf_pfad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "erstellt_am": {
+          "name": "erstellt_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rechnungen_auftrag_id_auftraege_id_fk": {
+          "name": "rechnungen_auftrag_id_auftraege_id_fk",
+          "tableFrom": "rechnungen",
+          "tableTo": "auftraege",
+          "columnsFrom": [
+            "auftrag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "rechnungen_objekt_id_objekte_id_fk": {
+          "name": "rechnungen_objekt_id_objekte_id_fk",
+          "tableFrom": "rechnungen",
+          "tableTo": "objekte",
+          "columnsFrom": [
+            "objekt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "rechnungen_einheit_id_einheiten_id_fk": {
+          "name": "rechnungen_einheit_id_einheiten_id_fk",
+          "tableFrom": "rechnungen",
+          "tableTo": "einheiten",
+          "columnsFrom": [
+            "einheit_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rechnungen_nummer_unique": {
+          "name": "rechnungen_nummer_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nummer"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "passwort_hash": {
+          "name": "passwort_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rolle": {
+          "name": "rolle",
+          "type": "rolle",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.auftrag_status": {
+      "name": "auftrag_status",
+      "schema": "public",
+      "values": [
+        "neu",
+        "geplant",
+        "arbeit",
+        "erledigt",
+        "rechnung",
+        "bezahlt",
+        "berechnet"
+      ]
+    },
+    "public.rechnung_quelle": {
+      "name": "rechnung_quelle",
+      "schema": "public",
+      "values": [
+        "eigen",
+        "objekt",
+        "hausverwaltung"
+      ]
+    },
+    "public.rechnung_status": {
+      "name": "rechnung_status",
+      "schema": "public",
+      "values": [
+        "offen",
+        "bezahlt"
+      ]
+    },
+    "public.rolle": {
+      "name": "rolle",
+      "schema": "public",
+      "values": [
+        "chef",
+        "monteur",
+        "buero"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

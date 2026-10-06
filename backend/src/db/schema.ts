@@ -8,6 +8,7 @@ import {
   date,
   integer,
   jsonb,
+  boolean,
 } from 'drizzle-orm/pg-core'
 
 // Rollen und Auftrags-Status als feste Aufzählungen (siehe CLAUDE.md).
@@ -28,6 +29,25 @@ export const rechnungStatusEnum = pgEnum('rechnung_status', [
   'bezahlt',
 ])
 
+// Woher eine Einheit/ein Objekt seine Rechnungsadresse nimmt:
+// eigene Angaben oder Verweis auf die übergeordnete Ebene.
+export const rechnungQuelleEnum = pgEnum('rechnung_quelle', [
+  'eigen',
+  'objekt',
+  'hausverwaltung',
+])
+
+// Rechnungsadress-Block: max. drei Adresszeilen (Empfänger, Straße + Hausnr.,
+// PLZ + Stadt) plus optional E-Mail (für den Mail-Versand) und Kundennummer
+// (erscheint auf der Rechnung). Leer = keine eigene Angabe.
+const rechnungsadresse = () => ({
+  rechnungEmpfaenger: text('rechnung_empfaenger'),
+  rechnungStrasse: text('rechnung_strasse'),
+  rechnungOrt: text('rechnung_ort'),
+  rechnungEmail: text('rechnung_email'),
+  rechnungKundennr: text('rechnung_kundennr'),
+})
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -36,20 +56,87 @@ export const users = pgTable('users', {
   rolle: rolleEnum('rolle').notNull(),
 })
 
-export const kunden = pgTable('kunden', {
+export const hausverwaltungen = pgTable('hausverwaltungen', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
-  adresse: text('adresse'),
+  notiz: text('notiz'),
+  ...rechnungsadresse(),
+  archiviert: boolean('archiviert').notNull().default(false),
+})
+
+// Ansprechpartner: gehören zu einer Hausverwaltung ODER stehen frei (z. B. ein
+// freier Hausmeister) – hausverwaltung_id ist deshalb nullable.
+export const ansprechpartner = pgTable('ansprechpartner', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  rolle: text('rolle'),
   telefon: text('telefon'),
   email: text('email'),
   notiz: text('notiz'),
+  hausverwaltungId: uuid('hausverwaltung_id').references(
+    () => hausverwaltungen.id,
+  ),
+  archiviert: boolean('archiviert').notNull().default(false),
+})
+
+// Objekt: Haus, Liegenschaft oder Standort – Ausgangspunkt für Aufträge.
+export const objekte = pgTable('objekte', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  strasse: text('strasse'),
+  hausnummer: text('hausnummer'),
+  plz: text('plz'),
+  ort: text('ort'),
+  hausverwaltungId: uuid('hausverwaltung_id').references(
+    () => hausverwaltungen.id,
+  ),
+  ansprechpartnerId: uuid('ansprechpartner_id').references(
+    () => ansprechpartner.id,
+  ),
+  vorOrtName: text('vor_ort_name'),
+  vorOrtTelefon: text('vor_ort_telefon'),
+  vorOrtEmail: text('vor_ort_email'),
+  rechnungQuelle: rechnungQuelleEnum('rechnung_quelle')
+    .notNull()
+    .default('hausverwaltung'),
+  ...rechnungsadresse(),
+  notiz: text('notiz'),
+  archiviert: boolean('archiviert').notNull().default(false),
+})
+
+// Einheit: z. B. "Wohnung 1, 1. OG rechts". Kann eine andere Hausverwaltung,
+// andere Ansprechpartner (u. a. Mieter vor Ort) und eine eigene
+// Rechnungsadresse haben als das Objekt – muss aber nicht.
+export const einheiten = pgTable('einheiten', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  objektId: uuid('objekt_id')
+    .notNull()
+    .references(() => objekte.id),
+  bezeichnung: text('bezeichnung').notNull(),
+  hausverwaltungId: uuid('hausverwaltung_id').references(
+    () => hausverwaltungen.id,
+  ),
+  ansprechpartnerId: uuid('ansprechpartner_id').references(
+    () => ansprechpartner.id,
+  ),
+  vorOrtName: text('vor_ort_name'),
+  vorOrtTelefon: text('vor_ort_telefon'),
+  vorOrtEmail: text('vor_ort_email'),
+  rechnungQuelle: rechnungQuelleEnum('rechnung_quelle')
+    .notNull()
+    .default('objekt'),
+  ...rechnungsadresse(),
+  notiz: text('notiz'),
+  archiviert: boolean('archiviert').notNull().default(false),
 })
 
 export const auftraege = pgTable('auftraege', {
   id: uuid('id').primaryKey().defaultRandom(),
-  kundeId: uuid('kunde_id')
-    .notNull()
-    .references(() => kunden.id),
+  // Objektbezug (optional): Objekt und ggf. Einheit. Beide leer = freier Auftrag.
+  objektId: uuid('objekt_id').references(() => objekte.id),
+  einheitId: uuid('einheit_id').references(() => einheiten.id),
+  // Nur bei freien Aufträgen: Freitext-Einsatzort (für den Kartenlink).
+  einsatzort: text('einsatzort'),
   titel: text('titel').notNull(),
   beschreibung: text('beschreibung'),
   status: auftragStatusEnum('status').notNull().default('neu'),
@@ -124,9 +211,9 @@ export const rechnungen = pgTable('rechnungen', {
   id: uuid('id').primaryKey().defaultRandom(),
   // Optional: bei auftragsbasierter Rechnung gesetzt, bei freier Rechnung leer.
   auftragId: uuid('auftrag_id').references(() => auftraege.id),
-  kundeId: uuid('kunde_id')
-    .notNull()
-    .references(() => kunden.id),
+  // Objektbezug (optional) – nur zur Orientierung, die Wahrheit ist der Snapshot.
+  objektId: uuid('objekt_id').references(() => objekte.id),
+  einheitId: uuid('einheit_id').references(() => einheiten.id),
   nummer: text('nummer').notNull().unique(),
   jahr: integer('jahr').notNull(),
   laufendeNr: integer('laufende_nr').notNull(),
@@ -137,7 +224,8 @@ export const rechnungen = pgTable('rechnungen', {
   objekt: text('objekt'),
   beschreibung: text('beschreibung'),
   firmaSnapshot: jsonb('firma_snapshot').notNull(),
-  kundeSnapshot: jsonb('kunde_snapshot').notNull(),
+  // Rechnungsempfänger zum Erstellungszeitpunkt (5 Block-Felder + Herkunft).
+  empfaengerSnapshot: jsonb('empfaenger_snapshot').notNull(),
   positionen: jsonb('positionen').notNull(),
   netto: numeric('netto', { precision: 12, scale: 2 }).notNull(),
   mwstSatz: numeric('mwst_satz', { precision: 5, scale: 2 }).notNull(),

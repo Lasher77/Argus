@@ -14,8 +14,10 @@ export interface ArbeitsAuftrag {
   termin: string | null
   stunden: number
   stundensatz: number | null
-  kundeName: string | null
-  kundeAdresse: string | null
+  ortLabel: string // "Objekt · Einheit" bzw. "Freier Auftrag"
+  adresse: string // Objektadresse bzw. Einsatzort
+  ansprechpartner: { name: string; telefon: string | null } | null
+  vorOrt: { name: string; telefon: string; email: string }
   fotoAnzahl: number
   material: MaterialPos[]
 }

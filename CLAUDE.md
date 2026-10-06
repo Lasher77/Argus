@@ -18,7 +18,7 @@ unterwegs (Smartphone der Monteure) und vom Büro (Laptop) erreichbar sein.
 ### Die drei Nutzer und ihre Rollen
 - **Chef** – sieht alles, legt Aufträge an, weist sie zu, behält Gesamtüberblick
   und Kennzahlen. Arbeitet sowohl mobil als auch am Laptop. **Der Chef ist
-  gleichzeitig auch Monteur** und arbeitet selbst beim Kunden. Er hat deshalb
+  gleichzeitig auch Monteur** und arbeitet selbst vor Ort. Er hat deshalb
   zwei klar getrennte Bereiche:
     1. **Dashboard (Geschäftsführung):** Gesamtüberblick über ALLE Aufträge
        aller Personen, Kennzahlen, Aufträge anlegen und zuweisen.
@@ -29,7 +29,7 @@ unterwegs (Smartphone der Monteure) und vom Büro (Laptop) erreichbar sein.
        genau wie ein Monteur, aber nur für seine eigenen zugewiesenen Aufträge.
 - **Monteur** – sieht nur die ihm zugewiesenen Aufträge, primär am Smartphone.
   Braucht radikal einfache Bedienung: große Buttons, wenige Klicks.
-- **Büro** (Ehefrau des Chefs) – verwaltet Kunden und Rechnungen am Laptop,
+- **Büro** (Ehefrau des Chefs) – verwaltet Objekte, Hausverwaltungen und Rechnungen am Laptop,
   verwandelt erledigte Aufträge in Rechnungen, verfolgt offen/bezahlt.
 
 #### Verbindliche Regeln für Zuweisung und Arbeitsansicht
@@ -98,21 +98,84 @@ Bewusst einfach gehalten.
 | passwort_hash| text       | gehasht (bcrypt o. ä.), niemals Klartext |
 | rolle        | text       | `chef` \| `monteur` \| `buero`           |
 
-### kunden
-| Feld     | Typ      | Hinweis            |
-|----------|----------|--------------------|
-| id       | UUID, PK |                    |
-| name     | text     | Kunden- oder Firmenname |
-| adresse  | text     |                    |
-| telefon  | text     | optional           |
-| email    | text     | optional           |
-| notiz    | text     | optional           |
+### Ausgangspunkt: Objekte (Hausverwaltung → Objekt → Einheit)
+Es gibt **keine Kunden-Tabelle**. Ausgangspunkt für Aufträge und Rechnungen sind
+**Objekte** (Haus, Liegenschaft oder Standort). Ein Objekt kann mehrere
+**Einheiten** haben (z. B. „Wohnung 1, 1. OG rechts“). Hausverwaltungen und
+Ansprechpartner sind eigene Stammdaten und werden per Dropdown gewählt – mit der
+Möglichkeit, direkt eine neue anzulegen.
+
+**Rechnungsadress-Block** (gleich an Hausverwaltung, Objekt und Einheit, außerdem
+als Snapshot an der Rechnung): max. drei Adresszeilen – `rechnung_empfaenger`,
+`rechnung_strasse` (Straße + Hausnummer in einer Zeile), `rechnung_ort` (PLZ +
+Stadt in einer Zeile) – plus optional `rechnung_email` (für den Mail-Versand) und
+`rechnung_kundennr` (erscheint auf der Rechnung). Leer = keine eigene Angabe.
+
+**Vererbung** (zentral in `backend/src/lib/objekte.ts`):
+- Hausverwaltung/Ansprechpartner: Einheit vor Objekt.
+- Ansprechpartner vor Ort (Name/Telefon/E-Mail, bei Einheiten typisch der Mieter):
+  der der Einheit, sonst der des Objekts.
+- Rechnungsadresse: jede Ebene hat `rechnung_quelle` – Objekt: `eigen` |
+  `hausverwaltung`; Einheit: `eigen` | `objekt` | `hausverwaltung`. Ist die gewählte
+  Quelle leer, greift die nächste gefüllte (Einheit → Objekt → Hausverwaltung).
+- Auftrag zu einer **Einheit** belegt die Rechnung mit den Daten der Einheit vor,
+  Auftrag zu einem **Objekt** mit denen des Objekts (ggf. der Hausverwaltung).
+- Ein Ansprechpartner ist entweder frei oder gehört zu einer Hausverwaltung; im
+  Dropdown erscheinen die freien und die der (effektiven) Hausverwaltung. Der
+  Server prüft das beim Speichern.
+- Es wird nichts gelöscht, sondern **archiviert** (`archiviert`), damit Aufträge
+  und Rechnungen ihre Verweise behalten. Archivierte erscheinen nicht mehr in
+  Auswahllisten.
+
+### hausverwaltungen
+| Feld | Typ | Hinweis |
+|------|-----|---------|
+| id | UUID, PK | |
+| name | text | |
+| notiz | text | optional |
+| rechnung_* | text | Rechnungsadress-Block (s. o.) |
+| archiviert | bool | |
+
+### ansprechpartner
+| Feld | Typ | Hinweis |
+|------|-----|---------|
+| id | UUID, PK | |
+| name, rolle, telefon, email, notiz | text | rolle z. B. „Objektbetreuung“ |
+| hausverwaltung_id | UUID, FK | → hausverwaltungen.id, **nullable** (freier Ansprechpartner) |
+| archiviert | bool | |
+
+### objekte
+| Feld | Typ | Hinweis |
+|------|-----|---------|
+| id | UUID, PK | |
+| name | text | z. B. „Wohnhaus Pohlstraße 11“ |
+| strasse, hausnummer, plz, ort | text | Objektadresse (strukturiert, für den Kartenlink) |
+| hausverwaltung_id | UUID, FK | nullable |
+| ansprechpartner_id | UUID, FK | nullable → ansprechpartner.id |
+| vor_ort_name/-telefon/-email | text | Ansprechpartner vor Ort |
+| rechnung_quelle | enum | `eigen` \| `hausverwaltung` |
+| rechnung_* | text | Rechnungsadress-Block |
+| notiz, archiviert | | |
+
+### einheiten
+| Feld | Typ | Hinweis |
+|------|-----|---------|
+| id | UUID, PK | |
+| objekt_id | UUID, FK | → objekte.id |
+| bezeichnung | text | z. B. „Wohnung 1, 1. OG rechts“ |
+| hausverwaltung_id, ansprechpartner_id | UUID, FK | nullable; leer = wie Objekt |
+| vor_ort_name/-telefon/-email | text | z. B. Mieter |
+| rechnung_quelle | enum | `eigen` \| `objekt` \| `hausverwaltung` |
+| rechnung_* | text | Rechnungsadress-Block |
+| notiz, archiviert | | |
 
 ### auftraege
 | Feld           | Typ        | Hinweis                                       |
 |----------------|------------|-----------------------------------------------|
 | id             | UUID, PK   |                                               |
-| kunde_id       | UUID, FK   | → kunden.id                                   |
+| objekt_id      | UUID, FK   | → objekte.id, nullable                        |
+| einheit_id     | UUID, FK   | → einheiten.id, nullable (gehört zum Objekt)  |
+| einsatzort     | text       | nur bei **freien Aufträgen** (kein Objekt/Einheit): Freitext-Einsatzort |
 | titel          | text       | kurze Bezeichnung, z. B. "Heizung warten"     |
 | beschreibung   | text       | optional, Details                             |
 | status         | text       | `neu`/`geplant`/`arbeit`/`erledigt`/`berechnet` |
@@ -155,7 +218,8 @@ Eigenes Objekt; kann mit Auftrag verknüpft sein (auftragsbasierte Rechnung)
 |----------------|------------|------------------------------------------------|
 | id             | UUID, PK   |                                                |
 | auftrag_id     | UUID, FK   | → auftraege.id, **nullable** (freie Rechnung) |
-| kunde_id       | UUID, FK   | → kunden.id                                    |
+| objekt_id      | UUID, FK   | → objekte.id, nullable (nur zur Orientierung)  |
+| einheit_id     | UUID, FK   | → einheiten.id, nullable                       |
 | nummer         | text       | fortlaufend pro Jahr, z. B. `2026-0001`        |
 | jahr           | int        | für Nummernkreis                               |
 | laufende_nr    | int        | jahresweiser Zähler                            |
@@ -166,7 +230,7 @@ Eigenes Objekt; kann mit Auftrag verknüpft sein (auftragsbasierte Rechnung)
 | objekt         | text       | nullable                                       |
 | beschreibung   | text       | nullable                                       |
 | firma_snapshot | jsonb      | Stammdaten zum Erstellungszeitpunkt            |
-| kunde_snapshot | jsonb      | Kundenname/-adresse zum Erstellungszeitpunkt   |
+| empfaenger_snapshot | jsonb | Rechnungsempfänger (Rechnungsadress-Block + Herkunft) zum Erstellungszeitpunkt |
 | positionen     | jsonb      | erstellte Positionen mit Betrag                |
 | netto          | numeric    |                                                |
 | mwst_satz      | numeric    |                                                |
@@ -176,7 +240,7 @@ Eigenes Objekt; kann mit Auftrag verknüpft sein (auftragsbasierte Rechnung)
 | erstellt_am    | timestamp  |                                                |
 
 Eine bereits erstellte Rechnung ist unveränderlich (Snapshot-Felder).
-Nachträgliche Änderungen an Kunden- oder Firmen-Stammdaten wirken nicht
+Nachträgliche Änderungen an Hausverwaltungen, Objekten, Einheiten oder Firmen-Stammdaten wirken nicht
 zurück. Korrekturen erfolgen über Storno + Neuausstellung (nicht Teil
 dieser Version – siehe §7).
 
@@ -199,13 +263,19 @@ lückenlose, jahresweise Rechnungsnummer.
   (alle im Status `erledigt`), Umsatz des laufenden Monats.
 - Liste aller Aufträge mit Status-Badge, zugewiesenem Monteur, Stunden,
   Materialanzahl, Fotoanzahl, errechneter Summe.
-- Button "Neuer Auftrag" → Formular (Kunde wählen/anlegen, Titel, Beschreibung).
+- Button "Neuer Auftrag" → Formular: entweder **Objektbezug** (Objekt wählen oder
+  inline „+ Neues Objekt“; Einheit wählen, „gesamtes Objekt“ oder inline „+ Neue
+  Einheit“; darunter die geerbten Daten: Hausverwaltung, Ansprechpartner, Vor Ort)
+  oder **Freier Auftrag** (kein Objekt, optional Freitext-Einsatzort); dazu Titel
+  und Beschreibung.
 - Auftrag einem Monteur zuweisen + Termin setzen (Status → `geplant`).
 - Filter nach Status und nach Monteur.
 
 ### Monteur-Ansicht (mobil optimiert)
 - Zeigt nur Aufträge des eingeloggten Monteurs im Status `geplant` oder `arbeit`.
-- Pro Auftrag: Kunde, Adresse (als anklickbarer Link zu Karten-App), Titel.
+- Pro Auftrag: Objekt · Einheit (bzw. „Freier Auftrag“), Adresse (als anklickbarer
+  Link zu Karten-App; bei freien Aufträgen der Einsatzort), Titel, Ansprechpartner
+  vor Ort und Ansprechpartner jeweils mit Telefonlink zum direkten Anrufen.
 - Button "Arbeit starten" (Status `geplant` → `arbeit`).
 - Stunden-Erfassung: Start/Stopp-Timer ODER manuelle Eingabe. Timer zählt die
   Zeit, beim Stopp wird sie auf `stunden` addiert.
@@ -224,7 +294,9 @@ lückenlose, jahresweise Rechnungsnummer.
   der Auftrag wechselt anschließend in den Status `berechnet`.
 - Button **"Neue Rechnung erstellen"**: zweiter Weg, ohne dass ein Auftrag
   dahinterstehen muss. Ablauf:
-  1. Kunde aus Liste wählen ODER neu anlegen (E-Mail-Feld klar sichtbar).
+  1. Optional Objekt/Einheit als Bezug wählen; **Rechnungsadresse** per Dropdown
+     (Einheit / Objekt / Hausverwaltung) oder **freie Eingabe** (drei Adresszeilen,
+     E-Mail, Kundennr.). Die Felder bleiben immer editierbar.
   2. Positionen frei eintragen oder aus dem Material-Katalog antippen.
      Auch eine Position vom Typ "Arbeitszeit" (Stunden × Stundensatz) ist
      frei eintragbar.
@@ -236,8 +308,9 @@ lückenlose, jahresweise Rechnungsnummer.
   - **"PDF öffnen"** – PDF inline öffnen.
   - **"Als bezahlt markieren"** – Status `offen → bezahlt`, setzt `bezahlt_am`.
   - **"Per E-Mail versenden"** – halbautomatisch, siehe Abschnitt unten.
-- Kundenverwaltung: Kunden anlegen, bearbeiten, suchen. E-Mail-Feld klar
-  sichtbar und schnell pflegbar.
+- Tab **Objekte** (auch der Chef kann Objekte inline anlegen): Objekte mit Einheiten,
+  Hausverwaltungen (mit ihren Ansprechpartnern) und alle Ansprechpartner anlegen,
+  bearbeiten, archivieren. E-Mail der Rechnungsadresse klar sichtbar und pflegbar.
 - Material-Katalog verwalten (Positionen + Standardpreise pflegen).
 - Einstellungen: Standard-Stundensatz, datierte Firmen-Stammdaten für die
   Rechnung (Name, Adresse, Steuernummer, Bankverbindung, Logo optional)
@@ -251,14 +324,16 @@ Browser-Einschränkung und wird **nicht umgangen**. Stattdessen halbautomatisch:
 - Klick auf "Per E-Mail versenden" macht parallel zwei Dinge:
   1. PDF der Rechnung herunterladen (regulärer Browser-Download).
   2. `mailto:`-Link öffnen mit:
-     - **An:** Kunden-E-Mail (falls im Kunden hinterlegt, sonst leer).
+     - **An:** E-Mail der Rechnungsadresse (aus dem Empfänger-Snapshot der
+       Rechnung, falls hinterlegt; sonst leer).
      - **Betreff:** aus Vorlage in den Einstellungen, Standard:
        `Rechnung {rechnungsnummer}`.
      - **Text:** aus Vorlage in den Einstellungen, Standard freundlich
        ("Sehr geehrte Damen und Herren, anbei senden wir Ihnen die
        Rechnung {rechnungsnummer}. …").
 - Platzhalter in den Vorlagen: `{rechnungsnummer}`, `{kundenname}`,
-  `{betrag}`, `{firmenname}`.
+  `{betrag}`, `{firmenname}` (`{kundenname}` und `{empfaenger}` = Name des
+  Rechnungsempfängers).
 - Direkt nach dem Klick zeigt die App einen kurzen Hinweis:
   > Die Rechnung wurde heruntergeladen und der Mail-Client geöffnet. Bitte
   > zieh die heruntergeladene PDF in die Mail, bevor du sie versendest.
@@ -273,7 +348,8 @@ Eigener Bereich in den Einstellungen:
 - **Live-Vorschau**: zeigt Betreff und Text befüllt mit einer Beispielrechnung.
 
 ### Rechnungs-PDF
-- Generiere ein sauberes PDF aus den Auftragsdaten: Firmenkopf, Kunde,
+- Generiere ein sauberes PDF aus den Auftragsdaten: Firmenkopf, Rechnungsempfänger
+  (drei Adresszeilen; Kundennr. nur wenn vorhanden),
   Rechnungsnummer (fortlaufend), Datum, Positionen (Arbeitszeit als Position +
   Materialpositionen), Zwischensumme, MwSt., Gesamtsumme, Zahlungshinweis.
 - Rechnungsnummer fortlaufend und eindeutig (z. B. JAHR-laufendeNr).
